@@ -93,6 +93,7 @@ export async function generateBatch(opts: {
     }),
     schema: ExerciseBatchSchema,
     model: DEFAULT_MODEL,
+    label: `generate(${subject.key}×${items.length})`,
   });
 
   // Ergebnisse mit den vorgegebenen Themen zusammenführen (nur so viele wie geliefert).
@@ -127,6 +128,7 @@ export async function gradeExercise(opts: {
     }),
     schema: GradeSchema,
     model: useReasoning ? REASONING_MODEL : DEFAULT_MODEL,
+    label: `grade(${opts.subjectKey})`,
   });
 }
 
@@ -139,5 +141,6 @@ export async function evaluateReading(opts: {
     prompt: readingPrompt({ passage: opts.passage, transcript: opts.transcript }),
     schema: ReadingGradeSchema,
     model: DEFAULT_MODEL,
+    label: "reading",
   });
 }

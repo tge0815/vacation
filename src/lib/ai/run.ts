@@ -18,16 +18,24 @@ export async function runAgentText(opts: {
   prompt: string;
   systemPrompt: string;
   model?: string;
+  label?: string;
 }): Promise<string> {
+  const requested = opts.model ?? DEFAULT_MODEL;
   let text = "";
+  let usedModel: string | undefined;
   for await (const chunk of streamAgent({
     prompt: opts.prompt,
     systemPrompt: opts.systemPrompt,
-    model: opts.model ?? DEFAULT_MODEL,
+    model: requested,
   })) {
     if (chunk.kind === "delta") text += chunk.text;
+    else if (chunk.kind === "done") usedModel = chunk.model;
     else if (chunk.kind === "error") throw new Error(chunk.message);
   }
+  // Nachweis, welches Modell wirklich geantwortet hat (z.B. um Haiku zu prüfen).
+  console.log(
+    `[lern-ai]${opts.label ? " " + opts.label : ""} angefragt=${requested} · verwendet=${usedModel ?? "?"}`,
+  );
   return text.trim();
 }
 
@@ -50,6 +58,7 @@ export async function runAgentJson<T>(opts: {
   systemPrompt: string;
   schema: z.ZodType<T>;
   model?: string;
+  label?: string;
 }): Promise<T> {
   const jsonHint =
     "\n\nAntworte AUSSCHLIESSLICH mit einem einzigen gültigen JSON-Objekt in einem ```json-Codeblock. Kein Text davor oder danach.";
@@ -59,6 +68,7 @@ export async function runAgentJson<T>(opts: {
       prompt: opts.prompt + extra,
       systemPrompt: opts.systemPrompt,
       model: opts.model,
+      label: opts.label,
     });
     const parsed = JSON.parse(extractJson(raw));
     return opts.schema.parse(parsed);
