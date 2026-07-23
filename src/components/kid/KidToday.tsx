@@ -59,11 +59,23 @@ export function KidToday({ userId }: { userId: number }) {
         >
           <ArrowLeft size={16} /> Profil wechseln
         </button>
-        {prog && prog.streak > 0 && (
-          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500">
-            <Flame size={18} /> {prog.streak} Tage-Serie
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {prog && prog.streak > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500">
+              <Flame size={18} /> {prog.streak}
+            </span>
+          )}
+          {user && (
+            <button
+              onClick={() => router.push(`/kind/${userId}/spiele`)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition"
+              title="Coins & Spiele"
+            >
+              <span className="text-base leading-none">🪙</span>
+              {user.coins}
+            </button>
+          )}
+        </div>
       </header>
 
       {user && (

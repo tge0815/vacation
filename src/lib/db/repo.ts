@@ -315,6 +315,42 @@ export function recentTopicPerformance(
   };
 }
 
+// --- Coins / Belohnung ---
+
+// Ist das Tagesziel komplett geschafft (alle Fächer mit Ziel erreicht)?
+export function isDayComplete(userId: number, date = localDateStr()): boolean {
+  const subjects = listSubjects();
+  const prog = progressToday(userId, date);
+  const byId = new Map(prog.map((p) => [p.subjectId, p]));
+  let withGoal = 0;
+  let reached = 0;
+  for (const s of subjects) {
+    const g = getGoal(userId, s.id);
+    if (g.target <= 0) continue;
+    withGoal++;
+    const p = byId.get(s.id);
+    const done = g.type === "count" ? (p?.attempts ?? 0) : Math.floor((p?.secondsDone ?? 0) / 60);
+    if (done >= g.target) reached++;
+  }
+  return withGoal > 0 && reached === withGoal;
+}
+
+// Vergibt (einmal pro Tag) einen Coin, sobald das Tagesziel geschafft ist.
+export function awardDailyCoin(userId: number): { awarded: boolean; coins: number } {
+  const db = getDb();
+  const user = getUser(userId);
+  if (!user) return { awarded: false, coins: 0 };
+  if (!isDayComplete(userId)) return { awarded: false, coins: user.coins };
+  const info = db
+    .prepare("INSERT OR IGNORE INTO coin_log (user_id, date, created_at) VALUES (?, ?, ?)")
+    .run(userId, localDateStr(), Date.now());
+  if (info.changes > 0) {
+    db.prepare("UPDATE users SET coins = coins + 1 WHERE id = ?").run(userId);
+    return { awarded: true, coins: user.coins + 1 };
+  }
+  return { awarded: false, coins: user.coins };
+}
+
 // --- Meta (u.a. Eltern-PIN) ---
 
 export function getMeta(key: string): string | null {

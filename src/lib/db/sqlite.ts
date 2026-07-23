@@ -133,6 +133,20 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
     name: "004_goal_type",
     sql: `ALTER TABLE goals ADD COLUMN goal_type TEXT NOT NULL DEFAULT 'minutes';`,
   },
+  {
+    // Belohnung: Coins pro Kind (1 pro geschafftem Tagesziel). coin_log stellt
+    // sicher, dass es pro Tag nur einmal einen Coin gibt.
+    name: "005_coins",
+    sql: `
+      ALTER TABLE users ADD COLUMN coins INTEGER NOT NULL DEFAULT 0;
+      CREATE TABLE IF NOT EXISTS coin_log (
+        user_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, date)
+      );
+    `,
+  },
 ];
 
 type SubjectSeed = {
@@ -297,6 +311,7 @@ export type UserRow = {
   pin_hash: string | null;
   grade: number;
   sort: number;
+  coins: number;
   created_at: number;
 };
 

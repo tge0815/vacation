@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { gradeExercise } from "@/lib/ai/exercises";
 import { tryLocalGrade } from "@/lib/ai/localGrade";
-import { insertAttempt } from "@/lib/db/repo";
+import { insertAttempt, awardDailyCoin } from "@/lib/db/repo";
 import { ExerciseSchema, type Exercise } from "@/lib/ai/schemas";
 
 export const runtime = "nodejs";
@@ -57,7 +57,9 @@ export async function POST(req: NextRequest) {
       durationSec: body.durationSec ?? 0,
     });
 
-    return NextResponse.json({ grade, attemptId: attempt.id });
+    const reward = awardDailyCoin(body.userId);
+
+    return NextResponse.json({ grade, attemptId: attempt.id, reward });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Fehler beim Bewerten";
     return NextResponse.json({ error: msg }, { status: 500 });

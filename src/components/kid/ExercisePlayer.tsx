@@ -12,6 +12,7 @@ import {
   Trophy,
   Send,
   Sparkles,
+  Gamepad2,
 } from "lucide-react";
 import { Confetti } from "@/components/Confetti";
 import { color } from "@/components/colors";
@@ -73,6 +74,7 @@ export function ExercisePlayer({
   const [committedCount, setCommittedCount] = useState(0);
   const [celebrated, setCelebrated] = useState(false);
   const [showCelebrate, setShowCelebrate] = useState(false);
+  const [coinAwarded, setCoinAwarded] = useState(false);
   const exerciseStart = useRef<number>(0);
   // Warteschlange vorab generierter Aufgaben. Ein KI-Aufruf liefert mehrere
   // Aufgaben; die App zieht daraus sofort und füllt im Hintergrund nach.
@@ -226,22 +228,25 @@ export function ExercisePlayer({
     };
   }, [ensureQueue]);
 
-  function afterGrade(durationSec: number) {
+  function afterGrade(durationSec: number, coinEarned = false) {
     const newSec = committedSec + durationSec;
     const newCount = committedCount + 1;
     setCommittedSec(newSec);
     setCommittedCount(newCount);
     setPhase("graded");
-    // Ziel gerade erreicht? Einmalig feiern (im Event-Handler, kein Effekt).
+    if (coinEarned) setCoinAwarded(true);
+    // Ziel gerade erreicht ODER Coin verdient? Einmalig feiern.
+    let goalHit = false;
     if (meta) {
       const done =
         meta.goalType === "count"
           ? meta.attemptsAtStart + newCount
           : Math.floor((meta.secondsDoneAtStart + newSec) / 60);
-      if (meta.goalTarget > 0 && done >= meta.goalTarget && !celebrated) {
-        setCelebrated(true);
-        setShowCelebrate(true);
-      }
+      goalHit = meta.goalTarget > 0 && done >= meta.goalTarget;
+    }
+    if (coinEarned || (goalHit && !celebrated)) {
+      setCelebrated(true);
+      setShowCelebrate(true);
     }
   }
 
@@ -270,7 +275,7 @@ export function ExercisePlayer({
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Fehler");
       setGrade(d.grade as Grade);
-      afterGrade(durationSec);
+      afterGrade(durationSec, Boolean(d.reward?.awarded));
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Fehler");
       setPhase("error");
@@ -303,7 +308,7 @@ export function ExercisePlayer({
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Fehler");
       setGrade({ ...(d.grade as Grade), isCorrect: d.isCorrect });
-      afterGrade(durationSec);
+      afterGrade(durationSec, Boolean(d.reward?.awarded));
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Fehler");
       setPhase("error");
@@ -353,30 +358,58 @@ export function ExercisePlayer({
       {/* Belohnungs-Screen */}
       {showCelebrate ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 animate-pop">
-          <Trophy size={64} className="text-amber-500" />
-          <h2 className="text-2xl font-bold">Tagesziel geschafft!</h2>
-          <p className="text-neutral-500">
-            {isCount
-              ? `Du hast heute ${doneValue} Aufgaben in ${meta?.name} geübt. Super gemacht!`
-              : `Du hast heute ${doneValue} Minuten ${meta?.name} geübt. Super gemacht!`}
-          </p>
-          <div className="flex gap-3 mt-2">
-            <button
-              onClick={() => {
-                setShowCelebrate(false);
-                nextExercise();
-              }}
-              className="rounded-xl bg-neutral-200 dark:bg-neutral-800 px-5 py-2.5 font-semibold hover:opacity-90"
-            >
-              Weiter üben
-            </button>
-            <button
-              onClick={() => router.push(`/kind/${userId}`)}
-              className="rounded-xl bg-emerald-500 text-white px-5 py-2.5 font-semibold hover:opacity-90"
-            >
-              Fertig für heute
-            </button>
-          </div>
+          {coinAwarded ? (
+            <>
+              <div className="text-7xl animate-wiggle" aria-hidden>
+                🪙
+              </div>
+              <h2 className="text-2xl font-bold">Tag geschafft — +1 Coin!</h2>
+              <p className="text-neutral-500">
+                Du hast heute alle Fächer erledigt. Zeit für ein Spiel!
+              </p>
+              <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => router.push(`/kind/${userId}/spiele`)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-amber-500 text-white px-5 py-2.5 font-semibold hover:opacity-90"
+                >
+                  <Gamepad2 size={18} /> Spielen
+                </button>
+                <button
+                  onClick={() => router.push(`/kind/${userId}`)}
+                  className="rounded-xl bg-neutral-200 dark:bg-neutral-800 px-5 py-2.5 font-semibold hover:opacity-90"
+                >
+                  Zur Übersicht
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Trophy size={64} className="text-amber-500" />
+              <h2 className="text-2xl font-bold">Ziel geschafft!</h2>
+              <p className="text-neutral-500">
+                {isCount
+                  ? `Du hast heute ${doneValue} Aufgaben in ${meta?.name} geübt. Super gemacht!`
+                  : `Du hast heute ${doneValue} Minuten ${meta?.name} geübt. Super gemacht!`}
+              </p>
+              <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => {
+                    setShowCelebrate(false);
+                    nextExercise();
+                  }}
+                  className="rounded-xl bg-neutral-200 dark:bg-neutral-800 px-5 py-2.5 font-semibold hover:opacity-90"
+                >
+                  Weiter üben
+                </button>
+                <button
+                  onClick={() => router.push(`/kind/${userId}`)}
+                  className="rounded-xl bg-emerald-500 text-white px-5 py-2.5 font-semibold hover:opacity-90"
+                >
+                  Fertig für heute
+                </button>
+              </div>
+            </>
+          )}
         </div>
       ) : phase === "loading" ? (
         <LoadingView colorBg={c.bg} />
