@@ -78,7 +78,9 @@ export function ExercisePlayer({
   // Aufgaben; die App zieht daraus sofort und füllt im Hintergrund nach.
   const queueRef = useRef<Gen[]>([]);
   const fetchingRef = useRef(false);
+  const activeRef = useRef(true);
   const BATCH = 5;
+  const TARGET = 5; // Vorrat wird bis hierhin aufgefüllt
   // Reaktive Spiegel der Warteschlange für die Vorrats-Anzeige.
   const [queueCount, setQueueCount] = useState(0);
   const [loadingBatch, setLoadingBatch] = useState(false);
@@ -112,20 +114,25 @@ export function ExercisePlayer({
     [userId, subjectId, topicId],
   );
 
-  // Warteschlange im Hintergrund auffüllen, wenn sie zur Neige geht.
-  const ensureQueue = useCallback(() => {
-    if (fetchingRef.current || queueRef.current.length > 2) return;
+  // Warteschlange im Hintergrund KONTINUIERLICH bis zum Ziel auffüllen.
+  // Läuft Bündel für Bündel weiter, solange der Vorrat unter dem Ziel ist —
+  // nicht nur ein einziges Bündel.
+  const ensureQueue = useCallback(async () => {
+    if (fetchingRef.current || !activeRef.current) return;
+    if (queueRef.current.length >= TARGET) return;
     fetchingRef.current = true;
     setLoadingBatch(true);
-    fetchBatch(BATCH)
-      .then((arr) => {
+    try {
+      while (activeRef.current && queueRef.current.length < TARGET) {
+        const arr = await fetchBatch(BATCH);
+        if (arr.length === 0) break; // Fehler → nicht endlos versuchen
         queueRef.current.push(...arr);
         bumpQueue();
-      })
-      .finally(() => {
-        fetchingRef.current = false;
-        setLoadingBatch(false);
-      });
+      }
+    } finally {
+      fetchingRef.current = false;
+      setLoadingBatch(false);
+    }
   }, [fetchBatch, bumpQueue]);
 
   // Nächste Aufgabe holen: aus der Warteschlange (sofort) oder – wenn leer –
@@ -152,7 +159,7 @@ export function ExercisePlayer({
       setGen(g);
       exerciseStart.current = Date.now();
       setPhase("answer");
-      ensureQueue();
+      void ensureQueue();
     },
     [ensureQueue],
   );
@@ -205,6 +212,19 @@ export function ExercisePlayer({
     const t = setTimeout(async () => showGen(await takeNext()), 0);
     return () => clearTimeout(t);
   }, [userId, subjectId, takeNext, showGen]);
+
+  // Sicherheits-Timer: hält den Vorrat auch während langer Antwortzeiten
+  // gefüllt und stoppt das Nachladen beim Verlassen der Seite.
+  useEffect(() => {
+    activeRef.current = true;
+    const id = setInterval(() => {
+      void ensureQueue();
+    }, 6000);
+    return () => {
+      activeRef.current = false;
+      clearInterval(id);
+    };
+  }, [ensureQueue]);
 
   function afterGrade(durationSec: number) {
     const newSec = committedSec + durationSec;
