@@ -1,13 +1,17 @@
 import { z } from "zod";
 import { streamAgent } from "./agent";
 
-export const DEFAULT_MODEL = process.env.LEARN_AGENT_DEFAULT_MODEL ?? "claude-sonnet-4-6";
-export const REASONING_MODEL = process.env.LEARN_AGENT_REASONING_MODEL ?? "claude-opus-4-8";
+// Standard: schnelles Haiku für Aufgaben-Generierung, einfache Bewertung und
+// Vorlesen. Reasoning: Sonnet für Textaufgaben/Maßstab und den Eltern-Coach.
+export const DEFAULT_MODEL = process.env.LEARN_AGENT_DEFAULT_MODEL ?? "claude-haiku-4-5-20251001";
+export const REASONING_MODEL = process.env.LEARN_AGENT_REASONING_MODEL ?? "claude-sonnet-4-6";
 
-export const MODEL_LABELS: Record<string, string> = {
-  [DEFAULT_MODEL]: "Sonnet",
-  [REASONING_MODEL]: "Opus",
-};
+export function modelLabel(id: string): string {
+  if (id.includes("haiku")) return "Haiku";
+  if (id.includes("sonnet")) return "Sonnet";
+  if (id.includes("opus")) return "Opus";
+  return "KI";
+}
 
 // Sammelt die komplette Agent-Antwort als Text ein.
 export async function runAgentText(opts: {

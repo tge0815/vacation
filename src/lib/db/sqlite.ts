@@ -88,6 +88,45 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
     name: "002_seed_subjects_topics",
     run: seedSubjectsAndTopics,
   },
+  {
+    // Mathe-Themen überarbeiten: Bruchrechnen (mit Rechnen) raus,
+    // stattdessen ggT/Kürzen, unechte Brüche und schriftliches Rechnen.
+    name: "003_mathe_topics_v2",
+    run: (db: Database.Database) => {
+      const mathe = db.prepare("SELECT id FROM subjects WHERE key = 'mathe'").get() as
+        | { id: number }
+        | undefined;
+      if (!mathe) return;
+      const sid = mathe.id;
+      db.prepare("DELETE FROM topics WHERE subject_id = ? AND key = 'bruchrechnen'").run(sid);
+      const ins = db.prepare(
+        "INSERT OR IGNORE INTO topics (subject_id, key, name, description, input_hint, sort, active) VALUES (?, ?, ?, ?, NULL, ?, 1)",
+      );
+      ins.run(
+        sid,
+        "teiler_kuerzen",
+        "Teiler & Kürzen",
+        "Größten gemeinsamen Teiler (ggT) bestimmen, Brüche kürzen und erweitern. WICHTIG: nur ganze Zahlen und einzelne Brüche. KEIN Rechnen mit Brüchen (keine Addition, Subtraktion, Multiplikation oder Division von Brüchen).",
+        0,
+      );
+      ins.run(
+        sid,
+        "unechte_brueche",
+        "Unechte Brüche",
+        "Unechte Brüche in gemischte Zahlen umwandeln und gemischte Zahlen in unechte Brüche. WICHTIG: KEIN Rechnen mit Brüchen.",
+        1,
+      );
+      ins.run(
+        sid,
+        "schriftlich",
+        "Schriftliches Rechnen",
+        "Aufgaben zum schriftlichen Rechnen auf Papier: schriftliche Addition, Subtraktion und Multiplikation mehrstelliger Zahlen. Das Kind rechnet die Aufgabe auf einem Zettel und trägt nur das Ergebnis (eine Zahl) ein. Zahlen groß genug, dass sich schriftliches Rechnen lohnt.",
+        2,
+      );
+      db.prepare("UPDATE topics SET sort = 3 WHERE subject_id = ? AND key = 'massstab'").run(sid);
+      db.prepare("UPDATE topics SET sort = 4 WHERE subject_id = ? AND key = 'textaufgaben'").run(sid);
+    },
+  },
 ];
 
 type SubjectSeed = {
@@ -136,9 +175,22 @@ const SUBJECT_SEEDS: SubjectSeed[] = [
     icon: "Calculator",
     topics: [
       {
-        key: "bruchrechnen",
-        name: "Bruchrechnen",
-        description: "Brüche addieren, subtrahieren, kürzen, erweitern und umwandeln.",
+        key: "teiler_kuerzen",
+        name: "Teiler & Kürzen",
+        description:
+          "Größten gemeinsamen Teiler (ggT) bestimmen, Brüche kürzen und erweitern. WICHTIG: nur ganze Zahlen und einzelne Brüche. KEIN Rechnen mit Brüchen (keine Addition, Subtraktion, Multiplikation oder Division von Brüchen).",
+      },
+      {
+        key: "unechte_brueche",
+        name: "Unechte Brüche",
+        description:
+          "Unechte Brüche in gemischte Zahlen umwandeln und gemischte Zahlen in unechte Brüche. WICHTIG: KEIN Rechnen mit Brüchen.",
+      },
+      {
+        key: "schriftlich",
+        name: "Schriftliches Rechnen",
+        description:
+          "Aufgaben zum schriftlichen Rechnen auf Papier: schriftliche Addition, Subtraktion und Multiplikation mehrstelliger Zahlen. Das Kind rechnet die Aufgabe auf einem Zettel und trägt nur das Ergebnis (eine Zahl) ein. Zahlen groß genug, dass sich schriftliches Rechnen lohnt.",
       },
       {
         key: "massstab",

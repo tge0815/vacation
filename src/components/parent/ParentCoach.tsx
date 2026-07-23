@@ -98,7 +98,7 @@ export function ParentCoach() {
               : "border-neutral-200 dark:border-neutral-700 text-neutral-500"
           }`}
         >
-          <Sparkles size={12} /> {useReasoning ? "Opus" : "Sonnet"}
+          <Sparkles size={12} /> {useReasoning ? "Gründlich" : "Schnell"}
         </button>
       </div>
 

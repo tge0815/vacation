@@ -10,8 +10,10 @@ services:
       # === KI (Max-Plan via Claude Code Agent SDK) ===
       # Auth liegt im lernferien-claude-Volume (siehe setup.sh).
       # KEIN API-Key, KEINE Pay-per-Token-Kosten.
-      LEARN_AGENT_DEFAULT_MODEL: "claude-sonnet-4-6"
-      LEARN_AGENT_REASONING_MODEL: "claude-opus-4-8"
+      # Standard = schnelles Haiku (Aufgaben generieren, einfach bewerten, Vorlesen).
+      # Reasoning = Sonnet (Textaufgaben/Maßstab bewerten, Eltern-Coach "Gründlich").
+      LEARN_AGENT_DEFAULT_MODEL: "claude-haiku-4-5-20251001"
+      LEARN_AGENT_REASONING_MODEL: "claude-sonnet-4-6"
       LEARN_DATA_DIR: "/data"
 
     volumes:

@@ -70,16 +70,18 @@ export function ExercisePlayer({
   const [celebrated, setCelebrated] = useState(false);
   const [showCelebrate, setShowCelebrate] = useState(false);
   const exerciseStart = useRef<number>(0);
+  // Vorab generierte nächste Aufgabe (Promise), damit die Wartezeit zwischen
+  // den Aufgaben versteckt wird — die App generiert schon, während das Kind
+  // die aktuelle Aufgabe bearbeitet.
+  const prefetchRef = useRef<Promise<Gen | null> | null>(null);
 
   const totalSec = (meta?.secondsDoneAtStart ?? 0) + committedSec;
   const totalMin = Math.floor(totalSec / 60);
   const goalMin = meta?.goalMinutes ?? 0;
   const goalReached = goalMin > 0 && totalMin >= goalMin;
 
-
-  // Reiner Fetch (alle setState-Aufrufe liegen NACH dem ersten await) —
-  // damit sicher aus einem Effekt aufrufbar, ohne synchrones setState.
-  const doGenerate = useCallback(async () => {
+  // Reiner Fetch ohne setState — liefert die Aufgabe oder null bei Fehler.
+  const fetchGen = useCallback(async (): Promise<Gen | null> => {
     try {
       const r = await fetch("/api/exercise/generate", {
         method: "POST",
@@ -88,25 +90,41 @@ export function ExercisePlayer({
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Fehler");
-      setGen(d as Gen);
-      exerciseStart.current = Date.now();
-      setPhase("answer");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Fehler");
-      setPhase("error");
+      return d as Gen;
+    } catch {
+      return null;
     }
   }, [userId, subjectId, topicId]);
 
+  // Aufgabe anzeigen und sofort die nächste im Hintergrund vorbereiten.
+  const showGen = useCallback(
+    (g: Gen | null) => {
+      if (!g) {
+        setErr("Aufgabe konnte nicht geladen werden.");
+        setPhase("error");
+        return;
+      }
+      setGen(g);
+      exerciseStart.current = Date.now();
+      setPhase("answer");
+      prefetchRef.current = fetchGen();
+    },
+    [fetchGen],
+  );
+
   // Aus Event-Handlern aufgerufen (Button „Nächste Aufgabe", Fehler-Retry).
-  const nextExercise = useCallback(() => {
+  const nextExercise = useCallback(async () => {
     setPhase("loading");
     setGrade(null);
     setAnswer("");
     setChoice(null);
     setErr(null);
     speech.setTranscript("");
-    doGenerate();
-  }, [doGenerate, speech]);
+    const pending = prefetchRef.current;
+    prefetchRef.current = null;
+    const g = pending ? await pending : await fetchGen();
+    showGen(g);
+  }, [fetchGen, showGen, speech]);
 
   useEffect(() => {
     // Meta (Fach, Ziel, bisheriger Fortschritt) inline laden.
@@ -134,10 +152,10 @@ export function ExercisePlayer({
       )
       .catch(() => {});
     // Erste Aufgabe erzeugen — via Microtask, damit setState nicht synchron
-    // im Effekt-Body passiert (doGenerate setzt State erst nach dem Fetch).
-    const t = setTimeout(() => doGenerate(), 0);
+    // im Effekt-Body passiert (showGen setzt State erst nach dem Fetch).
+    const t = setTimeout(async () => showGen(await fetchGen()), 0);
     return () => clearTimeout(t);
-  }, [userId, subjectId, doGenerate]);
+  }, [userId, subjectId, fetchGen, showGen]);
 
   function afterGrade(durationSec: number) {
     const newCommitted = committedSec + durationSec;
