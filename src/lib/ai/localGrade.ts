@@ -1,8 +1,9 @@
 import type { Exercise, Grade } from "./schemas";
 
-// Manche Aufgaben lassen sich ohne KI sofort bewerten (Multiple-Choice, Zahlen,
-// exakte Treffer). Das spart den langsamen Claude-Code-Aufruf komplett.
-// Gibt null zurück, wenn eine KI-Bewertung nötig ist (z.B. freier Text/Vorlesen).
+// Getippte Antworten (Multiple-Choice, Zahlen, Text, Brüche) werden lokal und
+// sofort bewertet — kein langsamer KI-Aufruf. Möglich ist das, weil die KI beim
+// Generieren bereits "solution" + "acceptable" (gültige Alternativen) mitliefert.
+// Nur Vorlesen (reading) braucht weiterhin die KI (eigener Endpunkt).
 
 const PRAISE = [
   "Richtig! Super gemacht.",
@@ -23,7 +24,7 @@ function norm(s: string): string {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .replace(/[.!?]+$/, "");
+    .replace(/[.!?,;:]+$/, "");
 }
 
 function parseNum(s: string): number | null {
@@ -33,46 +34,37 @@ function parseNum(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function tryLocalGrade(exercise: Exercise, answer: string): Grade | null {
-  const a = answer.trim();
-  const sol = exercise.solution.trim();
+function wrong(exercise: Exercise): Grade {
+  const expl = exercise.solutionExplanation ? ` ${exercise.solutionExplanation}` : "";
+  return {
+    isCorrect: false,
+    score: 0,
+    feedback: "Nicht ganz.",
+    correction: `Richtig ist: ${exercise.solution}.${expl}`,
+  };
+}
 
-  switch (exercise.inputMode) {
-    case "choice": {
-      const correct = norm(a) === norm(sol);
-      return correct
-        ? { isCorrect: true, score: 100, feedback: praise(a) }
-        : {
-            isCorrect: false,
-            score: 0,
-            feedback: "Nicht ganz.",
-            correction: `Richtig ist: ${sol}`,
-          };
+export function tryLocalGrade(exercise: Exercise, answer: string): Grade | null {
+  if (exercise.inputMode === "reading") return null; // Vorlesen → KI
+
+  const a = answer.trim();
+
+  // Zahlen numerisch vergleichen (42 == 42,0).
+  if (exercise.inputMode === "number") {
+    const na = parseNum(a);
+    const ns = parseNum(exercise.solution);
+    const alts = (exercise.acceptable ?? []).map(parseNum).filter((x): x is number => x !== null);
+    if (na !== null && ns !== null) {
+      const ok = [ns, ...alts].some((v) => Math.abs(na - v) < 1e-6);
+      return ok ? { isCorrect: true, score: 100, feedback: praise(a) } : wrong(exercise);
     }
-    case "number": {
-      const na = parseNum(a);
-      const ns = parseNum(sol);
-      if (na === null || ns === null) return null; // ungewöhnliche Eingabe → KI
-      const correct = Math.abs(na - ns) < 1e-6;
-      return correct
-        ? { isCorrect: true, score: 100, feedback: praise(a) }
-        : {
-            isCorrect: false,
-            score: 0,
-            feedback: "Nicht ganz.",
-            correction: `Richtig ist: ${sol}`,
-          };
-    }
-    case "fraction":
-    case "text": {
-      // Nur exakter Treffer wird lokal als richtig gewertet — sonst KI (die
-      // kann Tippfehler/gleichwertige Formen wohlwollend beurteilen).
-      if (norm(a) === norm(sol)) {
-        return { isCorrect: true, score: 100, feedback: praise(a) };
-      }
-      return null;
-    }
-    default:
-      return null; // reading etc. → KI
+    // Unparsbare Eingabe → trotzdem als falsch werten (kein KI-Umweg).
+    return wrong(exercise);
   }
+
+  // choice / text / fraction: gegen solution + acceptable (normalisiert) prüfen.
+  const accepted = new Set([exercise.solution, ...(exercise.acceptable ?? [])].map(norm));
+  return accepted.has(norm(a))
+    ? { isCorrect: true, score: 100, feedback: praise(a) }
+    : wrong(exercise);
 }

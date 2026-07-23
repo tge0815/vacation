@@ -12,6 +12,9 @@ export const ExerciseSchema = z.object({
   choices: z.array(z.string()).optional(),
   passage: z.string().optional(),
   solution: z.string().min(1),
+  // Weitere gültige Antworten (Synonyme, alternative Formen/Schreibweisen),
+  // damit die Bewertung lokal und sofort passieren kann.
+  acceptable: z.array(z.string()).optional(),
   solutionExplanation: z.string().optional(),
   difficulty: z.number().int().min(1).max(5),
 });

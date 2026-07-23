@@ -70,12 +70,20 @@ Gib GENAU dieses JSON zurück (ein Objekt mit einem Array "exercises"):
       "question": "die konkrete Frage / der Satz mit Lücke (___ für Lücken)",
       "choices": ["A", "B", "C"],
       "passage": "Vorlese-Text",
-      "solution": "die richtige Antwort",
-      "solutionExplanation": "1 kurzer Satz, warum",
+      "solution": "die eine beste richtige Antwort",
+      "acceptable": ["weitere korrekte Antwort", "..."],
+      "solutionExplanation": "1 kurzer, kindgerechter Satz, warum das richtig ist",
       "difficulty": <1-5>
     }
   ]
 }
+
+WICHTIG für die automatische Bewertung (die Antwort wird OHNE KI exakt verglichen):
+- "solution" ist EINDEUTIG und knapp — genau das, was das Kind eintippen soll (z.B. das gesuchte Wort oder die Wortform), NICHT ein ganzer Satz, außer die Aufgabe verlangt es.
+- "acceptable": liste ALLE weiteren Antworten, die auch als richtig gelten (Synonyme, alternative gültige Formen/Schreibweisen, mit/ohne Artikel). Wenn es nur eine richtige Antwort gibt, lass das Feld weg oder gib [].
+- "solutionExplanation" IMMER ausfüllen: 1 kurzer, freundlicher Satz für den Fall, dass das Kind falsch liegt.
+- Groß-/Kleinschreibung und Satzzeichen werden beim Vergleich ignoriert.
+
 Die Aufgaben im Array MÜSSEN in derselben Reihenfolge stehen wie unten vorgegeben und sich voneinander unterscheiden.`;
 }
 
