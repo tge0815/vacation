@@ -8,14 +8,20 @@ import { Balloons } from "./Balloons";
 import { ConnectFour } from "./ConnectFour";
 import { JumpRunner } from "./JumpRunner";
 import { Breakout } from "./Breakout";
+import { Memory } from "./Memory";
+import { Snake } from "./Snake";
+import { Game2048 } from "./Game2048";
 
-type GameKey = "balloons" | "connect4" | "jump" | "breakout";
+type GameKey = "balloons" | "connect4" | "jump" | "breakout" | "memory" | "snake" | "2048";
 
 const GAMES: { key: GameKey; name: string; emoji: string; desc: string; unit: string }[] = [
   { key: "balloons", name: "Ballons", emoji: "🎈", desc: "Tippe die Ballons", unit: "Treffer" },
   { key: "connect4", name: "Vier gewinnt", emoji: "🔴", desc: "Gegen den Computer", unit: "Siege" },
   { key: "jump", name: "Jump", emoji: "🐥", desc: "Flieg durch die Röhren", unit: "Punkte" },
   { key: "breakout", name: "Breakout", emoji: "🧱", desc: "Ball & Schläger", unit: "Punkte" },
+  { key: "memory", name: "Memory", emoji: "🃏", desc: "Finde die Pärchen", unit: "Züge" },
+  { key: "snake", name: "Snake", emoji: "🐍", desc: "Friss und wachse", unit: "Punkte" },
+  { key: "2048", name: "2048", emoji: "🔢", desc: "Zahlen schieben", unit: "Punkte" },
 ];
 
 export function GamesHub({ userId }: { userId: number }) {
@@ -92,6 +98,12 @@ export function GamesHub({ userId }: { userId: number }) {
         <JumpRunner userId={userId} best={scores.jump} onBest={(b) => setBest("jump", b)} />
       ) : selected === "breakout" ? (
         <Breakout userId={userId} best={scores.breakout} onBest={(b) => setBest("breakout", b)} />
+      ) : selected === "memory" ? (
+        <Memory userId={userId} best={scores.memory} onBest={(b) => setBest("memory", b)} />
+      ) : selected === "snake" ? (
+        <Snake userId={userId} best={scores.snake} onBest={(b) => setBest("snake", b)} />
+      ) : selected === "2048" ? (
+        <Game2048 userId={userId} best={scores["2048"]} onBest={(b) => setBest("2048", b)} />
       ) : (
         <>
           <h1 className="text-2xl font-bold mb-1">Spiele</h1>
