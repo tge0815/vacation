@@ -147,6 +147,14 @@ export function KidToday({ userId }: { userId: number }) {
                   {done ? <Check size={18} /> : <Play size={18} />}
                   {done ? "Weiter üben" : "Loslegen"}
                 </button>
+                {s.key === "geografie" && (
+                  <button
+                    onClick={() => router.push(`/kind/${userId}/landkarte`)}
+                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold py-2 text-sm hover:bg-cyan-500/20 transition"
+                  >
+                    🗺️ Landkarte
+                  </button>
+                )}
               </div>
             );
           })}

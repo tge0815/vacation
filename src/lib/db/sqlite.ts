@@ -177,14 +177,37 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       }
       const sid = row.id;
       const ins = db.prepare(
-        "INSERT OR IGNORE INTO topics (subject_id, key, name, description, input_hint, sort, active) VALUES (?, ?, ?, ?, NULL, ?, 1)",
+        "INSERT OR IGNORE INTO topics (subject_id, key, name, description, input_hint, sort, active) VALUES (?, ?, ?, ?, ?, ?, 1)",
       );
-      GEOGRAFIE_TOPICS.forEach((t, i) => ins.run(sid, t.key, t.name, t.description, i));
+      GEOGRAFIE_TOPICS.forEach((t, i) =>
+        ins.run(sid, t.key, t.name, t.description, t.input_hint ?? null, i),
+      );
+    },
+  },
+  {
+    // Interaktive Landkarte als Erdkunde-Thema (client-seitig, input_hint 'map').
+    name: "008_landkarte",
+    run: (db: Database.Database) => {
+      const row = db.prepare("SELECT id FROM subjects WHERE key = 'geografie'").get() as
+        | { id: number }
+        | undefined;
+      if (!row) return;
+      db.prepare(
+        "INSERT OR IGNORE INTO topics (subject_id, key, name, description, input_hint, sort, active) VALUES (?, 'landkarte', 'Landkarte', ?, 'map', 3, 1)",
+      ).run(
+        row.id,
+        "Länder auf der Karte finden und benennen (Europa und Welt).",
+      );
     },
   },
 ];
 
-const GEOGRAFIE_TOPICS = [
+const GEOGRAFIE_TOPICS: Array<{
+  key: string;
+  name: string;
+  description: string;
+  input_hint?: string;
+}> = [
   {
     key: "hauptstaedte",
     name: "Hauptstädte",
@@ -202,6 +225,12 @@ const GEOGRAFIE_TOPICS = [
     name: "Länder & Kontinente",
     description:
       "Auf welchem Kontinent liegt ein Land, welche Länder grenzen aneinander, welches ist das größte/bekannteste Land einer Region. Bevorzugt Multiple-Choice, altersgerecht für die 5. Klasse.",
+  },
+  {
+    key: "landkarte",
+    name: "Landkarte",
+    description: "Länder auf der Karte finden und benennen (Europa und Welt).",
+    input_hint: "map",
   },
 ];
 

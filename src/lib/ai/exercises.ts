@@ -57,7 +57,8 @@ export async function generateBatch(opts: {
     if (!t) throw new Error("Thema nicht gefunden");
     chosen = Array.from({ length: count }, () => t);
   } else {
-    const topics = listTopics(opts.subjectId);
+    // Karten-Themen (input_hint 'map') sind client-seitig, nicht KI-generiert.
+    const topics = listTopics(opts.subjectId).filter((t) => t.input_hint !== "map");
     if (topics.length === 0) throw new Error("Keine Themen für dieses Fach");
     const offset = recentAttempts({ userId: opts.userId }).length;
     chosen = Array.from({ length: count }, (_, i) => topics[(offset + i) % topics.length]);
