@@ -55,7 +55,21 @@ export function createUser(u: {
       maxSort + 1,
       Date.now(),
     );
-  return getUser(Number(info.lastInsertRowid))!;
+  const user = getUser(Number(info.lastInsertRowid))!;
+  seedDefaultGoals(user.id);
+  return user;
+}
+
+// Standard-Tagesziele für die Kernfächer (Deutsch/Mathe/Englisch = 10 Min).
+// Erdkunde & Co. bleiben bei 0 (= aus), bis die Eltern sie einstellen.
+export function seedDefaultGoals(userId: number): void {
+  const db = getDb();
+  for (const key of ["deutsch", "mathe", "englisch"]) {
+    const s = db.prepare("SELECT id FROM subjects WHERE key = ?").get(key) as
+      | { id: number }
+      | undefined;
+    if (s) setGoal(userId, s.id, 10, "minutes");
+  }
 }
 
 export function updateUser(
@@ -138,7 +152,7 @@ export function listGoals(userId: number): GoalRow[] {
 export function getGoal(
   userId: number,
   subjectId: number,
-  fallback: Goal = { target: 10, type: "minutes" },
+  fallback: Goal = { target: 0, type: "minutes" },
 ): Goal {
   const row = getDb()
     .prepare("SELECT daily_minutes, goal_type FROM goals WHERE user_id = ? AND subject_id = ?")

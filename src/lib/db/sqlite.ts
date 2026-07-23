@@ -185,6 +185,9 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
     },
   },
   {
+    // Standard-Ziele für Bestandskinder ohne jegliche Ziele nachziehen, damit
+    // das Tagesziel (und damit Coins) funktioniert. Kinder, für die schon Ziele
+    // gesetzt sind, bleiben unangetastet; Erdkunde bleibt bei 0 (= aus).
     // Interaktive Landkarte als Erdkunde-Thema (client-seitig, input_hint 'map').
     name: "008_landkarte",
     run: (db: Database.Database) => {
@@ -194,10 +197,31 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       if (!row) return;
       db.prepare(
         "INSERT OR IGNORE INTO topics (subject_id, key, name, description, input_hint, sort, active) VALUES (?, 'landkarte', 'Landkarte', ?, 'map', 3, 1)",
-      ).run(
-        row.id,
-        "Länder auf der Karte finden und benennen (Europa und Welt).",
+      ).run(row.id, "Länder auf der Karte finden und benennen (Europa und Welt).");
+    },
+  },
+  {
+    // Standard-Ziele für Bestandskinder ohne jegliche Ziele nachziehen, damit
+    // das Tagesziel (und damit Coins) funktioniert. Kinder, für die schon Ziele
+    // gesetzt sind, bleiben unangetastet; Erdkunde bleibt bei 0 (= aus).
+    name: "009_seed_core_goals",
+    run: (db: Database.Database) => {
+      const subj: Record<string, number> = {};
+      for (const key of ["deutsch", "mathe", "englisch"]) {
+        const s = db.prepare("SELECT id FROM subjects WHERE key = ?").get(key) as
+          | { id: number }
+          | undefined;
+        if (s) subj[key] = s.id;
+      }
+      const users = db.prepare("SELECT id FROM users").all() as Array<{ id: number }>;
+      const countGoals = db.prepare("SELECT COUNT(*) AS c FROM goals WHERE user_id = ?");
+      const ins = db.prepare(
+        "INSERT OR IGNORE INTO goals (user_id, subject_id, daily_minutes, goal_type) VALUES (?, ?, 10, 'minutes')",
       );
+      for (const u of users) {
+        const c = (countGoals.get(u.id) as { c: number }).c;
+        if (c === 0) for (const key of Object.keys(subj)) ins.run(u.id, subj[key]);
+      }
     },
   },
 ];

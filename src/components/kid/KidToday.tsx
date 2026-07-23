@@ -119,7 +119,8 @@ export function KidToday({ userId }: { userId: number }) {
           {prog.subjects.map((s) => {
             const c = color(s.color);
             const Icon = subjectIcon(s.icon);
-            const ratio = s.goalTarget ? s.doneValue / s.goalTarget : 0;
+            const hasGoal = s.goalTarget > 0;
+            const ratio = hasGoal ? s.doneValue / s.goalTarget : 0;
             const done = s.reached;
             const unit = s.goalType === "count" ? "" : "m";
             return (
@@ -130,14 +131,17 @@ export function KidToday({ userId }: { userId: number }) {
                 <ProgressRing progress={ratio} colorClass={done ? "text-emerald-500" : c.ring}>
                   <Icon className={done ? "text-emerald-500" : c.text} size={22} />
                   <span className="text-xs text-neutral-500 mt-1 nums">
-                    {s.doneValue}/{s.goalTarget}
-                    {unit}
+                    {hasGoal ? `${s.doneValue}/${s.goalTarget}${unit}` : "frei"}
                   </span>
                 </ProgressRing>
                 <div className="text-center">
                   <div className="font-semibold">{s.name}</div>
                   <div className="text-xs text-neutral-500">
-                    {s.goalType === "count" ? "Aufgaben-Ziel" : `${s.attempts} Aufgaben heute`}
+                    {!hasGoal
+                      ? "ohne Tagesziel"
+                      : s.goalType === "count"
+                        ? "Aufgaben-Ziel"
+                        : `${s.attempts} Aufgaben heute`}
                   </div>
                 </div>
                 <button

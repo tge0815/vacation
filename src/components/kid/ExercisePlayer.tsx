@@ -74,6 +74,7 @@ export function ExercisePlayer({
   const [committedCount, setCommittedCount] = useState(0);
   const [celebrated, setCelebrated] = useState(false);
   const [showCelebrate, setShowCelebrate] = useState(false);
+  const [pendingCelebrate, setPendingCelebrate] = useState(false);
   const [coinAwarded, setCoinAwarded] = useState(false);
   const exerciseStart = useRef<number>(0);
   // Warteschlange vorab generierter Aufgaben. Ein KI-Aufruf liefert mehrere
@@ -82,7 +83,7 @@ export function ExercisePlayer({
   const fetchingRef = useRef(false);
   const activeRef = useRef(true);
   const BATCH = 5;
-  const TARGET = 5; // Vorrat wird bis hierhin aufgefüllt
+  const TARGET = 10; // Vorrat wird bis hierhin aufgefüllt
   // Reaktive Spiegel der Warteschlange für die Vorrats-Anzeige.
   const [queueCount, setQueueCount] = useState(0);
   const [loadingBatch, setLoadingBatch] = useState(false);
@@ -244,9 +245,11 @@ export function ExercisePlayer({
           : Math.floor((meta.secondsDoneAtStart + newSec) / 60);
       goalHit = meta.goalTarget > 0 && done >= meta.goalTarget;
     }
+    // Belohnung NICHT sofort zeigen — erst das Feedback zur letzten Antwort,
+    // dann beim Weiterklicken die Feier.
     if (coinEarned || (goalHit && !celebrated)) {
       setCelebrated(true);
-      setShowCelebrate(true);
+      setPendingCelebrate(true);
     }
   }
 
@@ -338,8 +341,7 @@ export function ExercisePlayer({
             {gen?.topicName ? ` · ${gen.topicName}` : ""}
           </span>
           <span className="text-sm text-neutral-500 nums">
-            {doneValue}/{goalTarget}
-            {unit}
+            {goalTarget > 0 ? `${doneValue}/${goalTarget}${unit}` : ""}
           </span>
         </div>
         {goalTarget > 0 && (
@@ -534,10 +536,23 @@ export function ExercisePlayer({
                 )}
               </div>
               <button
-                onClick={nextExercise}
-                className={`inline-flex items-center justify-center gap-2 rounded-xl ${c.bg} text-white font-semibold py-3 hover:opacity-90`}
+                onClick={() => {
+                  if (pendingCelebrate) {
+                    setPendingCelebrate(false);
+                    setShowCelebrate(true);
+                  } else {
+                    nextExercise();
+                  }
+                }}
+                className={`inline-flex items-center justify-center gap-2 rounded-xl ${pendingCelebrate ? "bg-amber-500" : c.bg} text-white font-semibold py-3 hover:opacity-90`}
               >
-                <Sparkles size={18} /> Nächste Aufgabe
+                {pendingCelebrate ? (
+                  <>🎉 {coinAwarded ? "Belohnung!" : "Ziel geschafft!"}</>
+                ) : (
+                  <>
+                    <Sparkles size={18} /> Nächste Aufgabe
+                  </>
+                )}
               </button>
             </div>
           )}

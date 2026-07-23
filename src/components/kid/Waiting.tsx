@@ -48,21 +48,11 @@ export function LoadingView({ colorBg = "bg-sky-500" }: { colorBg?: string }) {
 // Kleine Vorrats-Anzeige: wie viele Aufgaben liegen schon bereit, lädt gerade
 // im Hintergrund noch etwas nach?
 export function QueueIndicator({ count, loading }: { count: number; loading: boolean }) {
-  const dots = 5;
   return (
     <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 dark:text-neutral-500">
       <Layers size={13} />
       <span>Vorrat</span>
-      <div className="flex gap-1">
-        {Array.from({ length: dots }).map((_, i) => (
-          <span
-            key={i}
-            className={`size-1.5 rounded-full ${
-              i < count ? "bg-emerald-500" : "bg-neutral-300 dark:bg-neutral-700"
-            }`}
-          />
-        ))}
-      </div>
+      <span className="nums font-semibold text-emerald-500">{count}</span>
       {loading && <Loader2 className="animate-spin" size={12} />}
     </div>
   );
