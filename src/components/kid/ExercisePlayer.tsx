@@ -16,6 +16,7 @@ import {
 import { Confetti } from "@/components/Confetti";
 import { color } from "@/components/colors";
 import { useSpeech } from "./useSpeech";
+import { LoadingView, QueueIndicator } from "./Waiting";
 import type { Exercise } from "@/lib/ai/schemas";
 
 type Gen = {
@@ -78,6 +79,10 @@ export function ExercisePlayer({
   const queueRef = useRef<Gen[]>([]);
   const fetchingRef = useRef(false);
   const BATCH = 5;
+  // Reaktive Spiegel der Warteschlange für die Vorrats-Anzeige.
+  const [queueCount, setQueueCount] = useState(0);
+  const [loadingBatch, setLoadingBatch] = useState(false);
+  const bumpQueue = useCallback(() => setQueueCount(queueRef.current.length), []);
 
   // Erledigt-Wert je nach Ziel-Typ: Minuten oder Anzahl Aufgaben.
   const isCount = meta?.goalType === "count";
@@ -111,21 +116,31 @@ export function ExercisePlayer({
   const ensureQueue = useCallback(() => {
     if (fetchingRef.current || queueRef.current.length > 2) return;
     fetchingRef.current = true;
+    setLoadingBatch(true);
     fetchBatch(BATCH)
-      .then((arr) => queueRef.current.push(...arr))
+      .then((arr) => {
+        queueRef.current.push(...arr);
+        bumpQueue();
+      })
       .finally(() => {
         fetchingRef.current = false;
+        setLoadingBatch(false);
       });
-  }, [fetchBatch]);
+  }, [fetchBatch, bumpQueue]);
 
   // Nächste Aufgabe holen: aus der Warteschlange (sofort) oder – wenn leer –
   // schnell EINE einzelne generieren (kürzer als ein ganzes Bündel).
   const takeNext = useCallback(async (): Promise<Gen | null> => {
-    if (queueRef.current.length > 0) return queueRef.current.shift() ?? null;
+    if (queueRef.current.length > 0) {
+      const g = queueRef.current.shift() ?? null;
+      bumpQueue();
+      return g;
+    }
     const arr = await fetchBatch(1);
     if (arr.length > 1) queueRef.current.push(...arr.slice(1));
+    bumpQueue();
     return arr[0] ?? null;
-  }, [fetchBatch]);
+  }, [fetchBatch, bumpQueue]);
 
   const showGen = useCallback(
     (g: Gen | null) => {
@@ -310,6 +325,9 @@ export function ExercisePlayer({
             />
           </div>
         )}
+        <div className="mt-2 flex justify-end">
+          <QueueIndicator count={queueCount} loading={loadingBatch} />
+        </div>
       </header>
 
       {/* Belohnungs-Screen */}
@@ -341,10 +359,7 @@ export function ExercisePlayer({
           </div>
         </div>
       ) : phase === "loading" ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-neutral-400">
-          <Loader2 className="animate-spin" size={32} />
-          <p className="text-sm">Ich denke mir eine Aufgabe aus…</p>
-        </div>
+        <LoadingView colorBg={c.bg} />
       ) : phase === "error" ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
           <X size={40} className="text-rose-500" />
