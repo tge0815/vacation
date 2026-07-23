@@ -351,6 +351,48 @@ export function awardDailyCoin(userId: number): { awarded: boolean; coins: numbe
   return { awarded: false, coins: user.coins };
 }
 
+// --- Highscores ---
+
+// Bei Memory ist weniger besser (Züge), sonst mehr (Punkte).
+function lowerIsBetter(game: string): boolean {
+  return game === "memory";
+}
+
+export function getGameScores(userId: number): Record<string, number> {
+  const rows = getDb()
+    .prepare("SELECT game, best FROM game_scores WHERE user_id = ?")
+    .all(userId) as Array<{ game: string; best: number }>;
+  const out: Record<string, number> = {};
+  for (const r of rows) out[r.game] = r.best;
+  return out;
+}
+
+export function recordGameScore(
+  userId: number,
+  game: string,
+  value: number,
+): { best: number; isNewBest: boolean } {
+  const db = getDb();
+  const v = Math.round(value);
+  const row = db
+    .prepare("SELECT best FROM game_scores WHERE user_id = ? AND game = ?")
+    .get(userId, game) as { best: number } | undefined;
+  if (!row) {
+    db.prepare(
+      "INSERT INTO game_scores (user_id, game, best, updated_at) VALUES (?, ?, ?, ?)",
+    ).run(userId, game, v, Date.now());
+    return { best: v, isNewBest: true };
+  }
+  const better = lowerIsBetter(game) ? v < row.best : v > row.best;
+  if (better) {
+    db.prepare(
+      "UPDATE game_scores SET best = ?, updated_at = ? WHERE user_id = ? AND game = ?",
+    ).run(v, Date.now(), userId, game);
+    return { best: v, isNewBest: true };
+  }
+  return { best: row.best, isNewBest: false };
+}
+
 // --- Meta (u.a. Eltern-PIN) ---
 
 export function getMeta(key: string): string | null {

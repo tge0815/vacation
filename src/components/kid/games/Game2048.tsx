@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RotateCcw, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { RotateCcw, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
+import { submitScore, type GameProps, type ScoreResult } from "./score";
 
 type Board = number[][];
 type Dir = "left" | "right" | "up" | "down";
@@ -88,12 +89,15 @@ const TILE: Record<number, string> = {
   2048: "bg-rose-500 text-white",
 };
 
-export function Game2048() {
+export function Game2048({ userId, best, onBest }: GameProps) {
   const [board, setBoard] = useState<Board>(empty);
   const [score, setScore] = useState(0);
   const [over, setOver] = useState(false);
+  const [result, setResult] = useState<ScoreResult | null>(null);
   const boardRef = useRef<Board>(empty());
   const overRef = useRef(false);
+  const scoreRef = useRef(0);
+  const submitted = useRef(false);
 
   const newGame = useCallback(() => {
     const b = empty();
@@ -101,24 +105,40 @@ export function Game2048() {
     addTile(b);
     boardRef.current = b;
     overRef.current = false;
+    scoreRef.current = 0;
+    submitted.current = false;
     setBoard(b.map((r) => [...r]));
     setScore(0);
     setOver(false);
+    setResult(null);
   }, []);
 
-  const doMove = useCallback((dir: Dir) => {
-    if (overRef.current) return;
-    const { board: nb, gained, moved } = move(boardRef.current, dir);
-    if (!moved) return;
-    addTile(nb);
-    boardRef.current = nb;
-    setBoard(nb.map((r) => [...r]));
-    if (gained) setScore((s) => s + gained);
-    if (!canMove(nb)) {
-      overRef.current = true;
-      setOver(true);
-    }
-  }, []);
+  const doMove = useCallback(
+    (dir: Dir) => {
+      if (overRef.current) return;
+      const { board: nb, gained, moved } = move(boardRef.current, dir);
+      if (!moved) return;
+      addTile(nb);
+      boardRef.current = nb;
+      setBoard(nb.map((r) => [...r]));
+      if (gained) {
+        scoreRef.current += gained;
+        setScore(scoreRef.current);
+      }
+      if (!canMove(nb)) {
+        overRef.current = true;
+        setOver(true);
+        if (!submitted.current) {
+          submitted.current = true;
+          submitScore(userId, "2048", scoreRef.current).then((res) => {
+            setResult(res);
+            onBest?.(res.best);
+          });
+        }
+      }
+    },
+    [userId, onBest],
+  );
 
   useEffect(() => {
     const t = setTimeout(newGame, 0);
@@ -148,7 +168,14 @@ export function Game2048() {
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="flex items-center justify-between w-full max-w-xs">
-        <span className="text-sm text-neutral-500 nums">Punkte: {score}</span>
+        <span className="text-sm text-neutral-500 nums">
+          Punkte: {score}
+          {(result?.best ?? best) != null && (
+            <span className="ml-3 inline-flex items-center gap-1 text-amber-500">
+              <Trophy size={13} /> {result?.best ?? best}
+            </span>
+          )}
+        </span>
         <button
           onClick={newGame}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-500 hover:text-sky-600"
@@ -168,7 +195,12 @@ export function Game2048() {
         ))}
       </div>
 
-      {over && <p className="text-lg font-bold animate-pop">Vorbei — {score} Punkte</p>}
+      {over && (
+        <div className="text-center animate-pop">
+          <p className="text-lg font-bold">Vorbei — {score} Punkte</p>
+          {result?.isNewBest && <p className="text-amber-500 font-semibold">🏆 Neuer Rekord!</p>}
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-2 w-40 select-none">
         <div />

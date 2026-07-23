@@ -147,6 +147,62 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       );
     `,
   },
+  {
+    // Highscores: bester Wert pro Kind & Spiel.
+    name: "006_game_scores",
+    sql: `
+      CREATE TABLE IF NOT EXISTS game_scores (
+        user_id INTEGER NOT NULL,
+        game TEXT NOT NULL,
+        best INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, game)
+      );
+    `,
+  },
+  {
+    // Neues Fach Erdkunde (Hauptstädte, Flaggen, Länder & Kontinente).
+    name: "007_geografie",
+    run: (db: Database.Database) => {
+      let row = db.prepare("SELECT id FROM subjects WHERE key = 'geografie'").get() as
+        | { id: number }
+        | undefined;
+      if (!row) {
+        const info = db
+          .prepare(
+            "INSERT INTO subjects (key, name, color, icon, sort, active) VALUES ('geografie','Erdkunde','cyan','Globe',3,1)",
+          )
+          .run();
+        row = { id: Number(info.lastInsertRowid) };
+      }
+      const sid = row.id;
+      const ins = db.prepare(
+        "INSERT OR IGNORE INTO topics (subject_id, key, name, description, input_hint, sort, active) VALUES (?, ?, ?, ?, NULL, ?, 1)",
+      );
+      GEOGRAFIE_TOPICS.forEach((t, i) => ins.run(sid, t.key, t.name, t.description, i));
+    },
+  },
+];
+
+const GEOGRAFIE_TOPICS = [
+  {
+    key: "hauptstaedte",
+    name: "Hauptstädte",
+    description:
+      "Hauptstädte europäischer Länder sowie die größten Hauptstädte der Welt. Frage nach der Hauptstadt eines Landes. Nutze bevorzugt Multiple-Choice (inputMode 'choice') mit 3-4 plausiblen Städten zur Auswahl.",
+  },
+  {
+    key: "flaggen",
+    name: "Flaggen",
+    description:
+      "Länder an ihrer Flagge erkennen. Stelle die Flagge als Emoji dar (z.B. 🇫🇷) und frage, zu welchem Land sie gehört. Multiple-Choice mit 3-4 Ländern. Bekannte Länder aus Europa und der Welt.",
+  },
+  {
+    key: "laender_kontinente",
+    name: "Länder & Kontinente",
+    description:
+      "Auf welchem Kontinent liegt ein Land, welche Länder grenzen aneinander, welches ist das größte/bekannteste Land einer Region. Bevorzugt Multiple-Choice, altersgerecht für die 5. Klasse.",
+  },
 ];
 
 type SubjectSeed = {
@@ -241,6 +297,13 @@ const SUBJECT_SEEDS: SubjectSeed[] = [
         description: "Simple Present, Simple Past, Artikel, Plural, Fragen.",
       },
     ],
+  },
+  {
+    key: "geografie",
+    name: "Erdkunde",
+    color: "cyan",
+    icon: "Globe",
+    topics: GEOGRAFIE_TOPICS,
   },
 ];
 

@@ -10,23 +10,30 @@ import { Game2048 } from "./Game2048";
 
 type GameKey = "memory" | "snake" | "2048";
 
-const GAMES: { key: GameKey; name: string; emoji: string; desc: string }[] = [
-  { key: "memory", name: "Memory", emoji: "🃏", desc: "Finde die Pärchen" },
-  { key: "snake", name: "Snake", emoji: "🐍", desc: "Friss und wachse" },
-  { key: "2048", name: "2048", emoji: "🔢", desc: "Zahlen zusammenschieben" },
+const GAMES: { key: GameKey; name: string; emoji: string; desc: string; unit: string; lower?: boolean }[] = [
+  { key: "memory", name: "Memory", emoji: "🃏", desc: "Finde die Pärchen", unit: "Züge", lower: true },
+  { key: "snake", name: "Snake", emoji: "🐍", desc: "Friss und wachse", unit: "Punkte" },
+  { key: "2048", name: "2048", emoji: "🔢", desc: "Zahlen zusammenschieben", unit: "Punkte" },
 ];
 
 export function GamesHub({ userId }: { userId: number }) {
   const router = useRouter();
   const [user, setUser] = useState<PublicUser | null>(null);
   const [selected, setSelected] = useState<GameKey | null>(null);
+  const [scores, setScores] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetch(`/api/users/${userId}`)
       .then((r) => r.json())
       .then((d: { user: PublicUser }) => setUser(d.user))
       .catch(() => {});
+    fetch(`/api/games/score?userId=${userId}`)
+      .then((r) => r.json())
+      .then((d: { scores: Record<string, number> }) => setScores(d.scores ?? {}))
+      .catch(() => {});
   }, [userId]);
+
+  const setBest = (game: GameKey, best: number) => setScores((s) => ({ ...s, [game]: best }));
 
   if (!user) {
     return (
@@ -70,27 +77,35 @@ export function GamesHub({ userId }: { userId: number }) {
           </button>
         </div>
       ) : selected === "memory" ? (
-        <Memory />
+        <Memory userId={userId} best={scores.memory} onBest={(b) => setBest("memory", b)} />
       ) : selected === "snake" ? (
-        <Snake />
+        <Snake userId={userId} best={scores.snake} onBest={(b) => setBest("snake", b)} />
       ) : selected === "2048" ? (
-        <Game2048 />
+        <Game2048 userId={userId} best={scores["2048"]} onBest={(b) => setBest("2048", b)} />
       ) : (
         <>
           <h1 className="text-2xl font-bold mb-1">Spiele</h1>
           <p className="text-neutral-500 mb-6">Such dir ein Spiel aus. Viel Spaß, {user.name}!</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {GAMES.map((g) => (
-              <button
-                key={g.key}
-                onClick={() => setSelected(g.key)}
-                className="flex flex-col items-center gap-2 rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-6 hover:shadow-xl hover:-translate-y-1 transition"
-              >
-                <span className="text-5xl">{g.emoji}</span>
-                <span className="font-semibold text-lg">{g.name}</span>
-                <span className="text-xs text-neutral-500">{g.desc}</span>
-              </button>
-            ))}
+            {GAMES.map((g) => {
+              const best = scores[g.key];
+              return (
+                <button
+                  key={g.key}
+                  onClick={() => setSelected(g.key)}
+                  className="flex flex-col items-center gap-2 rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-6 hover:shadow-xl hover:-translate-y-1 transition"
+                >
+                  <span className="text-5xl">{g.emoji}</span>
+                  <span className="font-semibold text-lg">{g.name}</span>
+                  <span className="text-xs text-neutral-500">{g.desc}</span>
+                  {best != null && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-500">
+                      🏆 {best} {g.unit}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </>
       )}

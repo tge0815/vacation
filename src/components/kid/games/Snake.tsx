@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RotateCcw, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { RotateCcw, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
+import { submitScore, type GameProps, type ScoreResult } from "./score";
 
 const GRID = 15;
 const SPEED = 160;
@@ -14,12 +15,14 @@ function randomFood(snake: P[]): P {
   }
 }
 
-export function Snake() {
+export function Snake({ userId, best, onBest }: GameProps) {
   const [snake, setSnake] = useState<P[]>([]);
   const [food, setFood] = useState<P>({ x: 0, y: 0 });
   const [score, setScore] = useState(0);
   const [over, setOver] = useState(false);
   const [started, setStarted] = useState(false);
+  const [result, setResult] = useState<ScoreResult | null>(null);
+  const submitted = useRef(false);
 
   const snakeRef = useRef<P[]>([]);
   const foodRef = useRef<P>({ x: 0, y: 0 });
@@ -44,6 +47,8 @@ export function Snake() {
     setScore(0);
     setOver(false);
     setStarted(true);
+    setResult(null);
+    submitted.current = false;
   }, []);
 
   const tick = useCallback(() => {
@@ -100,6 +105,16 @@ export function Snake() {
     };
   }, [tick, turn]);
 
+  useEffect(() => {
+    if (over && started && !submitted.current) {
+      submitted.current = true;
+      submitScore(userId, "snake", score).then((res) => {
+        setResult(res);
+        onBest?.(res.best);
+      });
+    }
+  }, [over, started, score, userId, onBest]);
+
   const cells = [];
   for (let y = 0; y < GRID; y++) {
     for (let x = 0; x < GRID; x++) {
@@ -126,7 +141,14 @@ export function Snake() {
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="flex items-center justify-between w-full max-w-sm">
-        <span className="text-sm text-neutral-500 nums">Punkte: {score}</span>
+        <span className="text-sm text-neutral-500 nums">
+          Punkte: {score}
+          {(result?.best ?? best) != null && (
+            <span className="ml-3 inline-flex items-center gap-1 text-amber-500">
+              <Trophy size={13} /> {result?.best ?? best}
+            </span>
+          )}
+        </span>
         <button
           onClick={newGame}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-500 hover:text-sky-600"
@@ -143,7 +165,10 @@ export function Snake() {
       </div>
 
       {over && started && (
-        <p className="text-lg font-bold animate-pop">Game Over — {score} Punkte</p>
+        <div className="text-center animate-pop">
+          <p className="text-lg font-bold">Game Over — {score} Punkte</p>
+          {result?.isNewBest && <p className="text-amber-500 font-semibold">🏆 Neuer Rekord!</p>}
+        </div>
       )}
       {!started && <p className="text-sm text-neutral-500">Tippe auf Start und steuere mit den Pfeilen.</p>}
 

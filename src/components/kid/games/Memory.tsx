@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Trophy } from "lucide-react";
+import { submitScore, type GameProps, type ScoreResult } from "./score";
 
 const POOL = ["🦊", "🐼", "🦁", "🐯", "🐸", "🐙", "🦄", "🐝", "🐬", "🦉", "🐰", "🐢"];
 const PAIRS = 6;
@@ -17,12 +18,14 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-export function Memory() {
+export function Memory({ userId, best, onBest }: GameProps) {
   const [cards, setCards] = useState<Card[]>([]);
   const [flipped, setFlipped] = useState<number[]>([]); // Indizes der offenen Karten
   const [moves, setMoves] = useState(0);
   const [locked, setLocked] = useState(false);
+  const [result, setResult] = useState<ScoreResult | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submitted = useRef(false);
 
   const newGame = useCallback(() => {
     const chosen = shuffle(POOL).slice(0, PAIRS);
@@ -31,6 +34,8 @@ export function Memory() {
     setFlipped([]);
     setMoves(0);
     setLocked(false);
+    setResult(null);
+    submitted.current = false;
   }, []);
 
   useEffect(() => {
@@ -40,6 +45,18 @@ export function Memory() {
       if (timer.current) clearTimeout(timer.current);
     };
   }, [newGame]);
+
+  const won = cards.length > 0 && cards.every((c) => c.matched);
+
+  useEffect(() => {
+    if (won && !submitted.current) {
+      submitted.current = true;
+      submitScore(userId, "memory", moves).then((res) => {
+        setResult(res);
+        onBest?.(res.best);
+      });
+    }
+  }, [won, moves, userId, onBest]);
 
   function clickCard(i: number) {
     if (locked || flipped.includes(i) || cards[i]?.matched) return;
@@ -61,12 +78,19 @@ export function Memory() {
     }
   }
 
-  const won = cards.length > 0 && cards.every((c) => c.matched);
+  const bestMoves = result?.best ?? best;
 
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="flex items-center justify-between w-full max-w-sm">
-        <span className="text-sm text-neutral-500 nums">Züge: {moves}</span>
+        <span className="text-sm text-neutral-500 nums">
+          Züge: {moves}
+          {bestMoves != null && (
+            <span className="ml-3 inline-flex items-center gap-1 text-amber-500">
+              <Trophy size={13} /> {bestMoves}
+            </span>
+          )}
+        </span>
         <button
           onClick={newGame}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-500 hover:text-sky-600"
@@ -99,6 +123,9 @@ export function Memory() {
       {won && (
         <div className="text-center animate-pop">
           <p className="text-lg font-bold">Geschafft in {moves} Zügen! 🎉</p>
+          {result?.isNewBest && (
+            <p className="text-amber-500 font-semibold">🏆 Neuer Rekord!</p>
+          )}
           <button
             onClick={newGame}
             className="mt-2 rounded-xl bg-emerald-500 text-white px-5 py-2 font-semibold hover:opacity-90"
