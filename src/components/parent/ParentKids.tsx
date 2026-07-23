@@ -5,7 +5,7 @@ import { Plus, Trash2, Pencil, Check, X, Loader2, KeyRound } from "lucide-react"
 import { COLOR_NAMES, color } from "@/components/colors";
 import type { PublicUser } from "@/lib/serialize";
 
-const EMOJIS = ["🦊", "🐼", "🦁", "🐯", "🐸", "🐙", "🦄", "🐝", "🦖", "🐬", "🦉", "🐰", "🚀", "⚽", "🎨", "🎸"];
+const EMOJIS = ["🦊", "🐼", "🦁", "🐯", "🐸", "🐙", "🦄", "🐝", "🦖", "🐬", "🦉", "🦆", "🐰", "🚀", "⚽", "🎨", "🎸"];
 
 type Draft = { name: string; emoji: string; colorName: string; grade: number; pin: string };
 const emptyDraft = (): Draft => ({ name: "", emoji: "🦊", colorName: "sky", grade: 5, pin: "" });
