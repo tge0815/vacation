@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { evaluateReading } from "@/lib/ai/exercises";
-import { insertAttempt, awardDailyCoin } from "@/lib/db/repo";
+import { insertAttempt, awardSubjectCoin } from "@/lib/db/repo";
 import { ExerciseSchema, type Exercise } from "@/lib/ai/schemas";
 
 export const runtime = "nodejs";
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       durationSec: body.durationSec ?? 0,
     });
 
-    const reward = awardDailyCoin(body.userId);
+    const reward = awardSubjectCoin(body.userId, body.subjectId);
 
     return NextResponse.json({ grade, isCorrect, attemptId: attempt.id, reward });
   } catch (e) {

@@ -349,20 +349,48 @@ export function isDayComplete(userId: number, date = localDateStr()): boolean {
   return withGoal > 0 && reached === withGoal;
 }
 
-// Vergibt (einmal pro Tag) einen Coin, sobald das Tagesziel geschafft ist.
-export function awardDailyCoin(userId: number): { awarded: boolean; coins: number } {
+// Ist das Tagesziel EINES Fachs geschafft?
+export function subjectReachedToday(
+  userId: number,
+  subjectId: number,
+  date = localDateStr(),
+): boolean {
+  const g = getGoal(userId, subjectId);
+  if (g.target <= 0) return false;
+  const p = progressToday(userId, date).find((x) => x.subjectId === subjectId);
+  const done = g.type === "count" ? (p?.attempts ?? 0) : Math.floor((p?.secondsDone ?? 0) / 60);
+  return done >= g.target;
+}
+
+// Vergibt (einmal pro Fach & Tag) einen Coin, sobald das Fach-Ziel steht.
+export function awardSubjectCoin(
+  userId: number,
+  subjectId: number,
+): { awarded: boolean; coins: number } {
   const db = getDb();
   const user = getUser(userId);
   if (!user) return { awarded: false, coins: 0 };
-  if (!isDayComplete(userId)) return { awarded: false, coins: user.coins };
+  if (!subjectReachedToday(userId, subjectId)) return { awarded: false, coins: user.coins };
   const info = db
-    .prepare("INSERT OR IGNORE INTO coin_log (user_id, date, created_at) VALUES (?, ?, ?)")
-    .run(userId, localDateStr(), Date.now());
+    .prepare(
+      "INSERT OR IGNORE INTO coin_awards (user_id, subject_id, date, created_at) VALUES (?, ?, ?, ?)",
+    )
+    .run(userId, subjectId, localDateStr(), Date.now());
   if (info.changes > 0) {
     db.prepare("UPDATE users SET coins = coins + 1 WHERE id = ?").run(userId);
     return { awarded: true, coins: user.coins + 1 };
   }
   return { awarded: false, coins: user.coins };
+}
+
+// Zieht einen Coin ab (fürs Spielen). Gibt ok=false zurück, wenn keiner da ist.
+export function spendCoin(userId: number): { ok: boolean; coins: number } {
+  const db = getDb();
+  const user = getUser(userId);
+  if (!user) return { ok: false, coins: 0 };
+  if (user.coins <= 0) return { ok: false, coins: 0 };
+  db.prepare("UPDATE users SET coins = coins - 1 WHERE id = ?").run(userId);
+  return { ok: true, coins: user.coins - 1 };
 }
 
 // --- Highscores ---

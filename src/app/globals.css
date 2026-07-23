@@ -84,3 +84,8 @@ body {
 .animate-wiggle {
   animation: wiggle 0.5s ease-in-out infinite;
 }
+
+@keyframes balloon-rise {
+  from { top: 100%; }
+  to { top: -18%; }
+}

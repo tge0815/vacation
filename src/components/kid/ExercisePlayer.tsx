@@ -365,9 +365,9 @@ export function ExercisePlayer({
               <div className="text-7xl animate-wiggle" aria-hidden>
                 🪙
               </div>
-              <h2 className="text-2xl font-bold">Tag geschafft — +1 Coin!</h2>
+              <h2 className="text-2xl font-bold">{meta?.name} geschafft — +1 Coin!</h2>
               <p className="text-neutral-500">
-                Du hast heute alle Fächer erledigt. Zeit für ein Spiel!
+                Stark! Mit Coins kannst du im Spiele-Bereich spielen.
               </p>
               <div className="flex gap-3 mt-2">
                 <button

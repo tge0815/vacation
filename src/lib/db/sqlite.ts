@@ -224,6 +224,19 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       }
     },
   },
+  {
+    // Coins pro geschafftem Fach & Tag (statt 1/Tag).
+    name: "010_coin_awards",
+    sql: `
+      CREATE TABLE IF NOT EXISTS coin_awards (
+        user_id INTEGER NOT NULL,
+        subject_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (user_id, subject_id, date)
+      );
+    `,
+  },
 ];
 
 const GEOGRAFIE_TOPICS: Array<{
