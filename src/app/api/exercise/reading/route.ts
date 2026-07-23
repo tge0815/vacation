@@ -1,0 +1,54 @@
+import { NextRequest, NextResponse } from "next/server";
+import { evaluateReading } from "@/lib/ai/exercises";
+import { insertAttempt } from "@/lib/db/repo";
+import { ExerciseSchema, type Exercise } from "@/lib/ai/schemas";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 120;
+
+export async function POST(req: NextRequest) {
+  const body = (await req.json()) as {
+    userId?: number;
+    subjectId?: number;
+    topicId?: number | null;
+    difficulty?: number;
+    exercise?: Exercise;
+    transcript?: string;
+    durationSec?: number;
+  };
+  if (!body.userId || !body.subjectId || !body.exercise) {
+    return NextResponse.json({ error: "userId/subjectId/exercise fehlt" }, { status: 400 });
+  }
+  const parsed = ExerciseSchema.safeParse(body.exercise);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Aufgabe ungültig" }, { status: 400 });
+  }
+  const exercise = parsed.data;
+  const passage = exercise.passage ?? exercise.solution ?? exercise.question;
+  const transcript = (body.transcript ?? "").trim();
+
+  try {
+    const grade = await evaluateReading({ passage, transcript });
+    const isCorrect = grade.accuracyPct >= 70;
+
+    const attempt = insertAttempt({
+      userId: body.userId,
+      subjectId: body.subjectId,
+      topicId: body.topicId ?? null,
+      difficulty: body.difficulty ?? exercise.difficulty,
+      inputMode: "reading",
+      exercise,
+      answerText: transcript,
+      grade,
+      isCorrect,
+      score: grade.score,
+      durationSec: body.durationSec ?? 0,
+    });
+
+    return NextResponse.json({ grade, isCorrect, attemptId: attempt.id });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Fehler beim Bewerten";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}

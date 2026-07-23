@@ -1,0 +1,27 @@
+services:
+  lernferien:
+    build: .
+    image: ferien-lerncoach:latest
+    container_name: lernferien
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      # === KI (Max-Plan via Claude Code Agent SDK) ===
+      # Auth liegt im lernferien-claude-Volume (siehe setup.sh).
+      # KEIN API-Key, KEINE Pay-per-Token-Kosten.
+      LEARN_AGENT_DEFAULT_MODEL: "claude-sonnet-4-6"
+      LEARN_AGENT_REASONING_MODEL: "claude-opus-4-8"
+      LEARN_DATA_DIR: "/data"
+
+    volumes:
+      # SQLite-DB — persistiert!
+      - lernferien-data:/data
+
+      # Claude Code Auth (Max-Plan): Container hat eigene .claude im Volume.
+      # setup.sh kopiert Host-Credentials einmalig rein. Re-Run synct neu.
+      - lernferien-claude:/home/nextjs/.claude
+
+volumes:
+  lernferien-data:
+  lernferien-claude:

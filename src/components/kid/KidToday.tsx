@@ -1,0 +1,139 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Flame, Loader2, Play, Check } from "lucide-react";
+import { ProgressRing } from "@/components/ProgressRing";
+import { color } from "@/components/colors";
+import { subjectIcon } from "@/components/subjectIcon";
+import type { PublicUser } from "@/lib/serialize";
+
+type SubjectProgress = {
+  subjectId: number;
+  key: string;
+  name: string;
+  color: string;
+  icon: string;
+  goalMinutes: number;
+  secondsDone: number;
+  attempts: number;
+  correct: number;
+};
+
+type Progress = {
+  subjects: SubjectProgress[];
+  totalGoalMinutes: number;
+  totalSecondsDone: number;
+  streak: number;
+};
+
+export function KidToday({ userId }: { userId: number }) {
+  const router = useRouter();
+  const [user, setUser] = useState<PublicUser | null>(null);
+  const [prog, setProg] = useState<Progress | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/users/${userId}`)
+      .then((r) => r.json())
+      .then((d: { user: PublicUser }) => setUser(d.user))
+      .catch(() => {});
+    fetch(`/api/progress?userId=${userId}`)
+      .then((r) => r.json())
+      .then(setProg)
+      .catch(() => {});
+  }, [userId]);
+
+  const totalMin = Math.floor((prog?.totalSecondsDone ?? 0) / 60);
+  const totalGoal = prog?.totalGoalMinutes ?? 0;
+  const allDone = totalGoal > 0 && totalMin >= totalGoal;
+
+  return (
+    <main className="mx-auto w-full max-w-3xl px-4 py-8 flex-1">
+      <header className="flex items-center justify-between mb-8">
+        <button
+          onClick={() => router.push("/")}
+          className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+        >
+          <ArrowLeft size={16} /> Profil wechseln
+        </button>
+        {prog && prog.streak > 0 && (
+          <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500">
+            <Flame size={18} /> {prog.streak} Tage-Serie
+          </span>
+        )}
+      </header>
+
+      {user && (
+        <div className="flex items-center gap-4 mb-6">
+          <span className={`size-16 rounded-full ${color(user.color).soft} flex items-center justify-center text-3xl`}>
+            {user.emoji}
+          </span>
+          <div>
+            <h1 className="text-2xl font-semibold">Hallo {user.name}!</h1>
+            <p className="text-neutral-500 text-sm">
+              {allDone ? "Tagesziel geschafft — stark!" : "Bereit für ein bisschen Üben?"}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Tagesziel-Balken */}
+      {totalGoal > 0 && (
+        <div className="mb-8 rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-4">
+          <div className="flex justify-between text-sm mb-2">
+            <span className="font-medium">Tagesziel</span>
+            <span className="text-neutral-500 nums">
+              {totalMin} / {totalGoal} min
+            </span>
+          </div>
+          <div className="h-3 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${allDone ? "bg-emerald-500" : "bg-sky-500"}`}
+              style={{ width: `${Math.min(100, totalGoal ? (totalMin / totalGoal) * 100 : 0)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {!prog ? (
+        <div className="flex justify-center py-16 text-neutral-400">
+          <Loader2 className="animate-spin" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {prog.subjects.map((s) => {
+            const c = color(s.color);
+            const Icon = subjectIcon(s.icon);
+            const minDone = Math.floor(s.secondsDone / 60);
+            const ratio = s.goalMinutes ? minDone / s.goalMinutes : 0;
+            const done = s.goalMinutes > 0 && minDone >= s.goalMinutes;
+            return (
+              <div
+                key={s.subjectId}
+                className="flex flex-col items-center gap-3 rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-5"
+              >
+                <ProgressRing progress={ratio} colorClass={done ? "text-emerald-500" : c.ring}>
+                  <Icon className={done ? "text-emerald-500" : c.text} size={22} />
+                  <span className="text-xs text-neutral-500 mt-1 nums">
+                    {minDone}/{s.goalMinutes}m
+                  </span>
+                </ProgressRing>
+                <div className="text-center">
+                  <div className="font-semibold">{s.name}</div>
+                  <div className="text-xs text-neutral-500">{s.attempts} Aufgaben heute</div>
+                </div>
+                <button
+                  onClick={() => router.push(`/kind/${userId}/uebung?subjectId=${s.subjectId}`)}
+                  className={`w-full inline-flex items-center justify-center gap-1.5 rounded-xl ${done ? "bg-emerald-500" : c.bg} text-white font-semibold py-2.5 hover:opacity-90 active:scale-95 transition`}
+                >
+                  {done ? <Check size={18} /> : <Play size={18} />}
+                  {done ? "Weiter üben" : "Loslegen"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </main>
+  );
+}
