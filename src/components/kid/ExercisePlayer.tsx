@@ -73,10 +73,11 @@ export function ExercisePlayer({
   const [celebrated, setCelebrated] = useState(false);
   const [showCelebrate, setShowCelebrate] = useState(false);
   const exerciseStart = useRef<number>(0);
-  // Vorab generierte nächste Aufgabe (Promise), damit die Wartezeit zwischen
-  // den Aufgaben versteckt wird — die App generiert schon, während das Kind
-  // die aktuelle Aufgabe bearbeitet.
-  const prefetchRef = useRef<Promise<Gen | null> | null>(null);
+  // Warteschlange vorab generierter Aufgaben. Ein KI-Aufruf liefert mehrere
+  // Aufgaben; die App zieht daraus sofort und füllt im Hintergrund nach.
+  const queueRef = useRef<Gen[]>([]);
+  const fetchingRef = useRef(false);
+  const BATCH = 5;
 
   // Erledigt-Wert je nach Ziel-Typ: Minuten oder Anzahl Aufgaben.
   const isCount = meta?.goalType === "count";
@@ -87,23 +88,45 @@ export function ExercisePlayer({
   const goalReached = goalTarget > 0 && doneValue >= goalTarget;
   const unit = isCount ? "" : "m";
 
-  // Reiner Fetch ohne setState — liefert die Aufgabe oder null bei Fehler.
-  const fetchGen = useCallback(async (): Promise<Gen | null> => {
-    try {
-      const r = await fetch("/api/exercise/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, subjectId, topicId: topicId ?? null }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? "Fehler");
-      return d as Gen;
-    } catch {
-      return null;
-    }
-  }, [userId, subjectId, topicId]);
+  // Ein Bündel Aufgaben holen (ohne setState) — liefert Array oder [] bei Fehler.
+  const fetchBatch = useCallback(
+    async (count: number): Promise<Gen[]> => {
+      try {
+        const r = await fetch("/api/exercise/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, subjectId, topicId: topicId ?? null, count }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error ?? "Fehler");
+        return (d.exercises ?? []) as Gen[];
+      } catch {
+        return [];
+      }
+    },
+    [userId, subjectId, topicId],
+  );
 
-  // Aufgabe anzeigen und sofort die nächste im Hintergrund vorbereiten.
+  // Warteschlange im Hintergrund auffüllen, wenn sie zur Neige geht.
+  const ensureQueue = useCallback(() => {
+    if (fetchingRef.current || queueRef.current.length > 2) return;
+    fetchingRef.current = true;
+    fetchBatch(BATCH)
+      .then((arr) => queueRef.current.push(...arr))
+      .finally(() => {
+        fetchingRef.current = false;
+      });
+  }, [fetchBatch]);
+
+  // Nächste Aufgabe holen: aus der Warteschlange (sofort) oder – wenn leer –
+  // schnell EINE einzelne generieren (kürzer als ein ganzes Bündel).
+  const takeNext = useCallback(async (): Promise<Gen | null> => {
+    if (queueRef.current.length > 0) return queueRef.current.shift() ?? null;
+    const arr = await fetchBatch(1);
+    if (arr.length > 1) queueRef.current.push(...arr.slice(1));
+    return arr[0] ?? null;
+  }, [fetchBatch]);
+
   const showGen = useCallback(
     (g: Gen | null) => {
       if (!g) {
@@ -114,9 +137,9 @@ export function ExercisePlayer({
       setGen(g);
       exerciseStart.current = Date.now();
       setPhase("answer");
-      prefetchRef.current = fetchGen();
+      ensureQueue();
     },
-    [fetchGen],
+    [ensureQueue],
   );
 
   // Aus Event-Handlern aufgerufen (Button „Nächste Aufgabe", Fehler-Retry).
@@ -127,13 +150,13 @@ export function ExercisePlayer({
     setChoice(null);
     setErr(null);
     speech.setTranscript("");
-    const pending = prefetchRef.current;
-    prefetchRef.current = null;
-    const g = pending ? await pending : await fetchGen();
-    showGen(g);
-  }, [fetchGen, showGen, speech]);
+    showGen(await takeNext());
+  }, [takeNext, showGen, speech]);
 
   useEffect(() => {
+    // Bei Fach-/Themenwechsel alte Warteschlange verwerfen.
+    queueRef.current = [];
+    fetchingRef.current = false;
     // Meta (Fach, Ziel, bisheriger Fortschritt) inline laden.
     fetch(`/api/progress?userId=${userId}`)
       .then((r) => r.json())
@@ -162,11 +185,11 @@ export function ExercisePlayer({
         },
       )
       .catch(() => {});
-    // Erste Aufgabe erzeugen — via Microtask, damit setState nicht synchron
+    // Erste Aufgabe holen — via Microtask, damit setState nicht synchron
     // im Effekt-Body passiert (showGen setzt State erst nach dem Fetch).
-    const t = setTimeout(async () => showGen(await fetchGen()), 0);
+    const t = setTimeout(async () => showGen(await takeNext()), 0);
     return () => clearTimeout(t);
-  }, [userId, subjectId, fetchGen, showGen]);
+  }, [userId, subjectId, takeNext, showGen]);
 
   function afterGrade(durationSec: number) {
     const newSec = committedSec + durationSec;

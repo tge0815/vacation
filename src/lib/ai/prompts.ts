@@ -54,6 +54,54 @@ ${DIFFICULTY_HINT(opts.difficulty)}${readingLine}${avoidBlock}
 Erzeuge jetzt eine passende Aufgabe zu diesem Thema.`;
 }
 
+export function exerciseBatchSystemPrompt(): string {
+  return `${TUTOR_BASE}
+
+Deine Aufgabe: Erzeuge MEHRERE verschiedene Übungsaufgaben auf einmal.
+
+${INPUT_MODE_DOC}
+
+Gib GENAU dieses JSON zurück (ein Objekt mit einem Array "exercises"):
+{
+  "exercises": [
+    {
+      "inputMode": "text" | "choice" | "number" | "fraction" | "reading",
+      "instruction": "kurze Aufgabenstellung",
+      "question": "die konkrete Frage / der Satz mit Lücke (___ für Lücken)",
+      "choices": ["A", "B", "C"],
+      "passage": "Vorlese-Text",
+      "solution": "die richtige Antwort",
+      "solutionExplanation": "1 kurzer Satz, warum",
+      "difficulty": <1-5>
+    }
+  ]
+}
+Die Aufgaben im Array MÜSSEN in derselben Reihenfolge stehen wie unten vorgegeben und sich voneinander unterscheiden.`;
+}
+
+export function exerciseBatchPrompt(opts: {
+  subject: string;
+  items: { topic: string; topicDescription: string; difficulty: number; forceReading: boolean }[];
+  avoid: string[];
+}): string {
+  const tasks = opts.items
+    .map((it, i) => {
+      const reading = it.forceReading
+        ? ` (Vorlese-Aufgabe: inputMode MUSS "reading" sein, passage = 2-4 kurze Sätze)`
+        : "";
+      return `Aufgabe ${i + 1}: Thema "${it.topic}" — ${it.topicDescription} Schwierigkeit ${it.difficulty}/5.${reading}`;
+    })
+    .join("\n");
+  const avoidBlock = opts.avoid.length
+    ? `\n\nVermeide Wiederholung dieser zuletzt gestellten Aufgaben:\n- ${opts.avoid.slice(0, 8).join("\n- ")}`
+    : "";
+  return `Fach: ${opts.subject}
+Erzeuge ${opts.items.length} Aufgaben, GENAU in dieser Reihenfolge:
+${tasks}${avoidBlock}
+
+Gib das JSON-Objekt mit dem "exercises"-Array zurück.`;
+}
+
 export function gradeSystemPrompt(): string {
   return `${TUTOR_BASE}
 

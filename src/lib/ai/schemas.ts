@@ -17,6 +17,11 @@ export const ExerciseSchema = z.object({
 });
 export type Exercise = z.infer<typeof ExerciseSchema>;
 
+// Mehrere Aufgaben in einem einzigen KI-Aufruf (spart Subprozess-Overhead).
+export const ExerciseBatchSchema = z.object({
+  exercises: z.array(ExerciseSchema).min(1),
+});
+
 // Bewertung einer Kind-Antwort.
 export const GradeSchema = z.object({
   isCorrect: z.boolean(),

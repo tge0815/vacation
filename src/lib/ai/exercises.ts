@@ -2,7 +2,7 @@ import { getSubject, getTopic, listTopics, recentAttempts, recentTopicPerformanc
 import type { SubjectRow, TopicRow } from "../db/sqlite";
 import { runAgentJson, DEFAULT_MODEL, REASONING_MODEL } from "./run";
 import {
-  ExerciseSchema,
+  ExerciseBatchSchema,
   GradeSchema,
   ReadingGradeSchema,
   type Exercise,
@@ -10,8 +10,8 @@ import {
   type ReadingGrade,
 } from "./schemas";
 import {
-  exerciseSystemPrompt,
-  exercisePrompt,
+  exerciseBatchSystemPrompt,
+  exerciseBatchPrompt,
   gradeSystemPrompt,
   gradePrompt,
   readingSystemPrompt,
@@ -37,28 +37,39 @@ function nextDifficulty(userId: number, topicId: number): number {
   return Math.min(5, Math.max(1, d));
 }
 
-export async function generateExercise(opts: {
+// Mehrere Aufgaben in EINEM KI-Aufruf erzeugen (spart Subprozess-Overhead pro
+// Aufgabe). Themen werden über die aktiven Themen des Fachs verteilt.
+export async function generateBatch(opts: {
   userId: number;
   subjectId: number;
   topicId?: number | null;
-}): Promise<GeneratedExercise> {
+  count: number;
+}): Promise<GeneratedExercise[]> {
   const subject = getSubject(opts.subjectId);
   if (!subject) throw new Error("Fach nicht gefunden");
 
-  let topic: TopicRow | null = opts.topicId ? getTopic(opts.topicId) : null;
-  if (!topic) {
+  const count = Math.max(1, Math.min(8, opts.count));
+
+  // Themen für die Aufgaben bestimmen (fixes Thema oder rotierend verteilt).
+  let chosen: TopicRow[];
+  if (opts.topicId) {
+    const t = getTopic(opts.topicId);
+    if (!t) throw new Error("Thema nicht gefunden");
+    chosen = Array.from({ length: count }, () => t);
+  } else {
     const topics = listTopics(opts.subjectId);
     if (topics.length === 0) throw new Error("Keine Themen für dieses Fach");
-    // Deterministisch-genug ohne Math.random: nach Attempt-Zahl rotieren.
-    const attemptsCount = recentAttempts({ userId: opts.userId, subjectId: opts.subjectId, limit: 1 })
-      .length;
-    topic = topics[(recentAttempts({ userId: opts.userId }).length + attemptsCount) % topics.length];
+    const offset = recentAttempts({ userId: opts.userId }).length;
+    chosen = Array.from({ length: count }, (_, i) => topics[(offset + i) % topics.length]);
   }
 
-  const difficulty = nextDifficulty(opts.userId, topic.id);
-  const forceReading = topic.input_hint === "reading";
+  const items = chosen.map((t) => ({
+    topic: t,
+    difficulty: nextDifficulty(opts.userId, t.id),
+    forceReading: t.input_hint === "reading",
+  }));
 
-  const avoid = recentAttempts({ userId: opts.userId, subjectId: opts.subjectId, limit: 6 })
+  const avoid = recentAttempts({ userId: opts.userId, subjectId: opts.subjectId, limit: 8 })
     .map((a) => {
       try {
         return (JSON.parse(a.exercise_json) as Exercise).question;
@@ -68,27 +79,31 @@ export async function generateExercise(opts: {
     })
     .filter(Boolean);
 
-  const exercise = await runAgentJson({
-    systemPrompt: exerciseSystemPrompt(),
-    prompt: exercisePrompt({
+  const result = await runAgentJson({
+    systemPrompt: exerciseBatchSystemPrompt(),
+    prompt: exerciseBatchPrompt({
       subject: subject.name,
-      topic: topic.name,
-      topicDescription: topic.description ?? "",
-      difficulty,
+      items: items.map((it) => ({
+        topic: it.topic.name,
+        topicDescription: it.topic.description ?? "",
+        difficulty: it.difficulty,
+        forceReading: it.forceReading,
+      })),
       avoid,
-      forceReading,
     }),
-    schema: ExerciseSchema,
+    schema: ExerciseBatchSchema,
     model: DEFAULT_MODEL,
   });
 
-  // Sicherheitsnetz: reading immer mit passage.
-  if (forceReading) {
-    exercise.inputMode = "reading";
-    if (!exercise.passage) exercise.passage = exercise.question;
-  }
-
-  return { exercise, subject, topic, difficulty };
+  // Ergebnisse mit den vorgegebenen Themen zusammenführen (nur so viele wie geliefert).
+  return result.exercises.slice(0, items.length).map((exercise, i) => {
+    const { topic, difficulty, forceReading } = items[i];
+    if (forceReading) {
+      exercise.inputMode = "reading";
+      if (!exercise.passage) exercise.passage = exercise.question;
+    }
+    return { exercise, subject, topic, difficulty };
+  });
 }
 
 export async function gradeExercise(opts: {

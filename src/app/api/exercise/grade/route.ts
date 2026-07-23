@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { gradeExercise } from "@/lib/ai/exercises";
+import { tryLocalGrade } from "@/lib/ai/localGrade";
 import { insertAttempt } from "@/lib/db/repo";
 import { ExerciseSchema, type Exercise } from "@/lib/ai/schemas";
 
@@ -31,12 +32,16 @@ export async function POST(req: NextRequest) {
   const answer = (body.answer ?? "").trim();
 
   try {
-    const grade = await gradeExercise({
-      subjectKey: body.subjectKey ?? "",
-      topicKey: body.topicKey,
-      exercise,
-      answer,
-    });
+    // Erst lokal versuchen (Multiple-Choice/Zahlen/exakte Treffer) — kein
+    // KI-Aufruf, sofortige Antwort. Sonst KI bewerten lassen.
+    const grade =
+      tryLocalGrade(exercise, answer) ??
+      (await gradeExercise({
+        subjectKey: body.subjectKey ?? "",
+        topicKey: body.topicKey,
+        exercise,
+        answer,
+      }));
 
     const attempt = insertAttempt({
       userId: body.userId,
