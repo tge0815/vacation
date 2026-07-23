@@ -40,8 +40,10 @@ type Grade = {
 type SubjectMeta = {
   name: string;
   color: string;
-  goalMinutes: number;
+  goalType: "minutes" | "count";
+  goalTarget: number;
   secondsDoneAtStart: number;
+  attemptsAtStart: number;
 };
 
 type Phase = "loading" | "answer" | "graded" | "error";
@@ -67,6 +69,7 @@ export function ExercisePlayer({
   const [submitting, setSubmitting] = useState(false);
   const [meta, setMeta] = useState<SubjectMeta | null>(null);
   const [committedSec, setCommittedSec] = useState(0);
+  const [committedCount, setCommittedCount] = useState(0);
   const [celebrated, setCelebrated] = useState(false);
   const [showCelebrate, setShowCelebrate] = useState(false);
   const exerciseStart = useRef<number>(0);
@@ -75,10 +78,14 @@ export function ExercisePlayer({
   // die aktuelle Aufgabe bearbeitet.
   const prefetchRef = useRef<Promise<Gen | null> | null>(null);
 
-  const totalSec = (meta?.secondsDoneAtStart ?? 0) + committedSec;
-  const totalMin = Math.floor(totalSec / 60);
-  const goalMin = meta?.goalMinutes ?? 0;
-  const goalReached = goalMin > 0 && totalMin >= goalMin;
+  // Erledigt-Wert je nach Ziel-Typ: Minuten oder Anzahl Aufgaben.
+  const isCount = meta?.goalType === "count";
+  const doneValue = isCount
+    ? (meta?.attemptsAtStart ?? 0) + committedCount
+    : Math.floor(((meta?.secondsDoneAtStart ?? 0) + committedSec) / 60);
+  const goalTarget = meta?.goalTarget ?? 0;
+  const goalReached = goalTarget > 0 && doneValue >= goalTarget;
+  const unit = isCount ? "" : "m";
 
   // Reiner Fetch ohne setState — liefert die Aufgabe oder null bei Fehler.
   const fetchGen = useCallback(async (): Promise<Gen | null> => {
@@ -136,8 +143,10 @@ export function ExercisePlayer({
             subjectId: number;
             name: string;
             color: string;
-            goalMinutes: number;
+            goalType: "minutes" | "count";
+            goalTarget: number;
             secondsDone: number;
+            attempts: number;
           }[];
         }) => {
           const s = d.subjects.find((x) => x.subjectId === subjectId);
@@ -145,8 +154,10 @@ export function ExercisePlayer({
             setMeta({
               name: s.name,
               color: s.color,
-              goalMinutes: s.goalMinutes,
+              goalType: s.goalType,
+              goalTarget: s.goalTarget,
               secondsDoneAtStart: s.secondsDone,
+              attemptsAtStart: s.attempts,
             });
         },
       )
@@ -158,14 +169,21 @@ export function ExercisePlayer({
   }, [userId, subjectId, fetchGen, showGen]);
 
   function afterGrade(durationSec: number) {
-    const newCommitted = committedSec + durationSec;
-    setCommittedSec(newCommitted);
+    const newSec = committedSec + durationSec;
+    const newCount = committedCount + 1;
+    setCommittedSec(newSec);
+    setCommittedCount(newCount);
     setPhase("graded");
     // Ziel gerade erreicht? Einmalig feiern (im Event-Handler, kein Effekt).
-    const total = (meta?.secondsDoneAtStart ?? 0) + newCommitted;
-    if (goalMin > 0 && Math.floor(total / 60) >= goalMin && !celebrated) {
-      setCelebrated(true);
-      setShowCelebrate(true);
+    if (meta) {
+      const done =
+        meta.goalType === "count"
+          ? meta.attemptsAtStart + newCount
+          : Math.floor((meta.secondsDoneAtStart + newSec) / 60);
+      if (meta.goalTarget > 0 && done >= meta.goalTarget && !celebrated) {
+        setCelebrated(true);
+        setShowCelebrate(true);
+      }
     }
   }
 
@@ -257,14 +275,15 @@ export function ExercisePlayer({
             {gen?.topicName ? ` · ${gen.topicName}` : ""}
           </span>
           <span className="text-sm text-neutral-500 nums">
-            {totalMin}/{goalMin}m
+            {doneValue}/{goalTarget}
+            {unit}
           </span>
         </div>
-        {goalMin > 0 && (
+        {goalTarget > 0 && (
           <div className="h-2 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${goalReached ? "bg-emerald-500" : c.bg}`}
-              style={{ width: `${Math.min(100, (totalMin / Math.max(1, goalMin)) * 100)}%` }}
+              style={{ width: `${Math.min(100, (doneValue / Math.max(1, goalTarget)) * 100)}%` }}
             />
           </div>
         )}
@@ -276,7 +295,9 @@ export function ExercisePlayer({
           <Trophy size={64} className="text-amber-500" />
           <h2 className="text-2xl font-bold">Tagesziel geschafft!</h2>
           <p className="text-neutral-500">
-            Du hast heute {totalMin} Minuten {meta?.name} geübt. Super gemacht!
+            {isCount
+              ? `Du hast heute ${doneValue} Aufgaben in ${meta?.name} geübt. Super gemacht!`
+              : `Du hast heute ${doneValue} Minuten ${meta?.name} geübt. Super gemacht!`}
           </p>
           <div className="flex gap-3 mt-2">
             <button

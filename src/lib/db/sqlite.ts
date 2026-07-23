@@ -127,6 +127,12 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       db.prepare("UPDATE topics SET sort = 4 WHERE subject_id = ? AND key = 'textaufgaben'").run(sid);
     },
   },
+  {
+    // Ziel-Typ: entweder Minuten pro Tag ('minutes') oder Anzahl Aufgaben
+    // pro Tag ('count'). daily_minutes hält weiterhin den Zielwert (Zahl).
+    name: "004_goal_type",
+    sql: `ALTER TABLE goals ADD COLUMN goal_type TEXT NOT NULL DEFAULT 'minutes';`,
+  },
 ];
 
 type SubjectSeed = {
@@ -319,7 +325,8 @@ export type GoalRow = {
   id: number;
   user_id: number;
   subject_id: number;
-  daily_minutes: number;
+  daily_minutes: number; // Zielwert: Minuten (goal_type='minutes') oder Aufgaben-Anzahl ('count')
+  goal_type: string;
 };
 
 export type AttemptRow = {

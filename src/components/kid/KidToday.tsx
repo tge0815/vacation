@@ -14,16 +14,19 @@ type SubjectProgress = {
   name: string;
   color: string;
   icon: string;
-  goalMinutes: number;
+  goalType: "minutes" | "count";
+  goalTarget: number;
   secondsDone: number;
   attempts: number;
   correct: number;
+  doneValue: number;
+  reached: boolean;
 };
 
 type Progress = {
   subjects: SubjectProgress[];
-  totalGoalMinutes: number;
-  totalSecondsDone: number;
+  subjectsWithGoal: number;
+  subjectsReached: number;
   streak: number;
 };
 
@@ -43,9 +46,9 @@ export function KidToday({ userId }: { userId: number }) {
       .catch(() => {});
   }, [userId]);
 
-  const totalMin = Math.floor((prog?.totalSecondsDone ?? 0) / 60);
-  const totalGoal = prog?.totalGoalMinutes ?? 0;
-  const allDone = totalGoal > 0 && totalMin >= totalGoal;
+  const totalGoal = prog?.subjectsWithGoal ?? 0;
+  const totalReached = prog?.subjectsReached ?? 0;
+  const allDone = totalGoal > 0 && totalReached >= totalGoal;
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 flex-1">
@@ -77,19 +80,19 @@ export function KidToday({ userId }: { userId: number }) {
         </div>
       )}
 
-      {/* Tagesziel-Balken */}
+      {/* Tagesziel-Balken: Fächer geschafft (funktioniert für Minuten & Aufgaben) */}
       {totalGoal > 0 && (
         <div className="mb-8 rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-4">
           <div className="flex justify-between text-sm mb-2">
             <span className="font-medium">Tagesziel</span>
             <span className="text-neutral-500 nums">
-              {totalMin} / {totalGoal} min
+              {totalReached} / {totalGoal} Fächer
             </span>
           </div>
           <div className="h-3 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${allDone ? "bg-emerald-500" : "bg-sky-500"}`}
-              style={{ width: `${Math.min(100, totalGoal ? (totalMin / totalGoal) * 100 : 0)}%` }}
+              style={{ width: `${Math.min(100, totalGoal ? (totalReached / totalGoal) * 100 : 0)}%` }}
             />
           </div>
         </div>
@@ -104,9 +107,9 @@ export function KidToday({ userId }: { userId: number }) {
           {prog.subjects.map((s) => {
             const c = color(s.color);
             const Icon = subjectIcon(s.icon);
-            const minDone = Math.floor(s.secondsDone / 60);
-            const ratio = s.goalMinutes ? minDone / s.goalMinutes : 0;
-            const done = s.goalMinutes > 0 && minDone >= s.goalMinutes;
+            const ratio = s.goalTarget ? s.doneValue / s.goalTarget : 0;
+            const done = s.reached;
+            const unit = s.goalType === "count" ? "" : "m";
             return (
               <div
                 key={s.subjectId}
@@ -115,12 +118,15 @@ export function KidToday({ userId }: { userId: number }) {
                 <ProgressRing progress={ratio} colorClass={done ? "text-emerald-500" : c.ring}>
                   <Icon className={done ? "text-emerald-500" : c.text} size={22} />
                   <span className="text-xs text-neutral-500 mt-1 nums">
-                    {minDone}/{s.goalMinutes}m
+                    {s.doneValue}/{s.goalTarget}
+                    {unit}
                   </span>
                 </ProgressRing>
                 <div className="text-center">
                   <div className="font-semibold">{s.name}</div>
-                  <div className="text-xs text-neutral-500">{s.attempts} Aufgaben heute</div>
+                  <div className="text-xs text-neutral-500">
+                    {s.goalType === "count" ? "Aufgaben-Ziel" : `${s.attempts} Aufgaben heute`}
+                  </div>
                 </div>
                 <button
                   onClick={() => router.push(`/kind/${userId}/uebung?subjectId=${s.subjectId}`)}

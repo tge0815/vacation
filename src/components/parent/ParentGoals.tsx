@@ -8,13 +8,15 @@ import type { PublicUser } from "@/lib/serialize";
 
 type Topic = { id: number; name: string; description: string | null; active: number };
 type Subject = { id: number; key: string; name: string; color: string; icon: string; topics: Topic[] };
-type Goal = { subjectId: number; subjectName: string; dailyMinutes: number };
+type GoalType = "minutes" | "count";
+type Goal = { subjectId: number; subjectName: string; goalType: GoalType; target: number };
+type GoalState = { type: GoalType; target: number };
 
 export function ParentGoals() {
   const [users, setUsers] = useState<PublicUser[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
-  const [minutes, setMinutes] = useState<Record<number, number>>({});
+  const [goals, setGoals] = useState<Record<number, GoalState>>({});
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -38,11 +40,18 @@ export function ParentGoals() {
     fetch(`/api/goals?userId=${userId}`)
       .then((r) => r.json())
       .then((d: { goals: Goal[] }) => {
-        const m: Record<number, number> = {};
-        d.goals.forEach((g) => (m[g.subjectId] = g.dailyMinutes));
-        setMinutes(m);
+        const m: Record<number, GoalState> = {};
+        d.goals.forEach((g) => (m[g.subjectId] = { type: g.goalType, target: g.target }));
+        setGoals(m);
       });
   }, [userId]);
+
+  function setGoalField(subjectId: number, patch: Partial<GoalState>) {
+    setGoals((prev) => ({
+      ...prev,
+      [subjectId]: { type: prev[subjectId]?.type ?? "minutes", target: prev[subjectId]?.target ?? 0, ...patch },
+    }));
+  }
 
   async function saveGoals() {
     if (!userId) return;
@@ -51,9 +60,10 @@ export function ParentGoals() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         userId,
-        goals: Object.entries(minutes).map(([subjectId, dailyMinutes]) => ({
+        goals: Object.entries(goals).map(([subjectId, g]) => ({
           subjectId: Number(subjectId),
-          dailyMinutes,
+          goalType: g.type,
+          target: g.target,
         })),
       }),
     });
@@ -80,8 +90,6 @@ export function ParentGoals() {
   if (users.length === 0)
     return <p className="text-neutral-500 text-center py-8">Erst ein Kind anlegen.</p>;
 
-  const total = Object.values(minutes).reduce((s, m) => s + (m || 0), 0);
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
@@ -98,30 +106,46 @@ export function ParentGoals() {
         ))}
       </div>
 
-      {/* Minuten pro Fach */}
+      {/* Tagesziel pro Fach: Minuten ODER Anzahl Aufgaben */}
       <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold">Tägliche Minuten pro Fach</h3>
-          <span className="text-sm text-neutral-500 nums">Ziel gesamt: {total} min</span>
+        <div>
+          <h3 className="font-semibold">Tagesziel pro Fach</h3>
+          <p className="text-xs text-neutral-500">
+            Pro Fach entweder Minuten pro Tag oder Anzahl Aufgaben pro Tag festlegen.
+          </p>
         </div>
         {subjects.map((s) => {
           const Icon = subjectIcon(s.icon);
           const c = color(s.color);
+          const g = goals[s.id] ?? { type: "minutes" as GoalType, target: 0 };
           return (
-            <div key={s.id} className="flex items-center gap-3">
+            <div key={s.id} className="flex items-center gap-3 flex-wrap">
               <span className={`size-9 rounded-xl ${c.soft} flex items-center justify-center`}>
                 <Icon size={18} className={c.text} />
               </span>
-              <span className="flex-1 font-medium">{s.name}</span>
+              <span className="flex-1 min-w-[80px] font-medium">{s.name}</span>
               <input
                 type="number"
                 min={0}
                 max={120}
-                value={minutes[s.id] ?? 0}
-                onChange={(e) => setMinutes({ ...minutes, [s.id]: Number(e.target.value) })}
+                value={g.target}
+                onChange={(e) => setGoalField(s.id, { target: Number(e.target.value) })}
                 className="w-20 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-1.5 text-right nums focus:border-sky-500 focus:outline-none"
               />
-              <span className="text-sm text-neutral-500 w-8">min</span>
+              {/* Umschalter Minuten / Aufgaben */}
+              <div className="inline-flex rounded-lg bg-neutral-100 dark:bg-neutral-800 p-0.5 text-xs font-medium">
+                {(["minutes", "count"] as GoalType[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setGoalField(s.id, { type: t })}
+                    className={`px-2.5 py-1 rounded-md transition ${
+                      g.type === t ? "bg-white dark:bg-neutral-700 shadow-sm" : "text-neutral-500"
+                    }`}
+                  >
+                    {t === "minutes" ? "Min." : "Aufg."}
+                  </button>
+                ))}
+              </div>
             </div>
           );
         })}

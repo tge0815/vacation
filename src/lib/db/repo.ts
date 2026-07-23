@@ -126,26 +126,36 @@ export function setTopicActive(id: number, active: boolean): void {
 
 // --- Goals ---
 
+export type GoalType = "minutes" | "count";
+export type Goal = { target: number; type: GoalType };
+
 export function listGoals(userId: number): GoalRow[] {
   return getDb()
     .prepare("SELECT * FROM goals WHERE user_id = ?")
     .all(userId) as GoalRow[];
 }
 
-export function getGoalMinutes(userId: number, subjectId: number, fallback = 10): number {
+export function getGoal(
+  userId: number,
+  subjectId: number,
+  fallback: Goal = { target: 10, type: "minutes" },
+): Goal {
   const row = getDb()
-    .prepare("SELECT daily_minutes FROM goals WHERE user_id = ? AND subject_id = ?")
-    .get(userId, subjectId) as { daily_minutes: number } | undefined;
-  return row?.daily_minutes ?? fallback;
+    .prepare("SELECT daily_minutes, goal_type FROM goals WHERE user_id = ? AND subject_id = ?")
+    .get(userId, subjectId) as { daily_minutes: number; goal_type: string } | undefined;
+  if (!row) return fallback;
+  return { target: row.daily_minutes, type: row.goal_type === "count" ? "count" : "minutes" };
 }
 
-export function setGoal(userId: number, subjectId: number, minutes: number): void {
+export function setGoal(userId: number, subjectId: number, target: number, type: GoalType): void {
   getDb()
     .prepare(
-      `INSERT INTO goals (user_id, subject_id, daily_minutes) VALUES (?, ?, ?)
-       ON CONFLICT(user_id, subject_id) DO UPDATE SET daily_minutes = excluded.daily_minutes`,
+      `INSERT INTO goals (user_id, subject_id, daily_minutes, goal_type) VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id, subject_id) DO UPDATE SET
+         daily_minutes = excluded.daily_minutes,
+         goal_type = excluded.goal_type`,
     )
-    .run(userId, subjectId, Math.max(0, Math.round(minutes)));
+    .run(userId, subjectId, Math.max(0, Math.round(target)), type);
 }
 
 // --- Attempts ---

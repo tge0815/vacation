@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listSubjects, getGoalMinutes, progressToday, currentStreak } from "@/lib/db/repo";
+import { listSubjects, getGoal, progressToday, currentStreak } from "@/lib/db/repo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,26 +15,35 @@ export async function GET(req: NextRequest) {
 
   const rows = subjects.map((s) => {
     const p = byId.get(s.id);
+    const goal = getGoal(userId, s.id);
+    const secondsDone = p?.secondsDone ?? 0;
+    const attempts = p?.attempts ?? 0;
+    // Erledigt-Wert je nach Ziel-Typ: Minuten (aufgerundet) oder Aufgaben-Anzahl.
+    const doneValue = goal.type === "count" ? attempts : Math.floor(secondsDone / 60);
+    const reached = goal.target > 0 && doneValue >= goal.target;
     return {
       subjectId: s.id,
       key: s.key,
       name: s.name,
       color: s.color,
       icon: s.icon,
-      goalMinutes: getGoalMinutes(userId, s.id),
-      secondsDone: p?.secondsDone ?? 0,
-      attempts: p?.attempts ?? 0,
+      goalType: goal.type,
+      goalTarget: goal.target,
+      secondsDone,
+      attempts,
       correct: p?.correct ?? 0,
+      doneValue,
+      reached,
     };
   });
 
-  const totalGoalMinutes = rows.reduce((s, r) => s + r.goalMinutes, 0);
-  const totalSecondsDone = rows.reduce((s, r) => s + r.secondsDone, 0);
+  const withGoal = rows.filter((r) => r.goalTarget > 0);
+  const subjectsReached = withGoal.filter((r) => r.reached).length;
 
   return NextResponse.json({
     subjects: rows,
-    totalGoalMinutes,
-    totalSecondsDone,
+    subjectsWithGoal: withGoal.length,
+    subjectsReached,
     streak: currentStreak(userId),
   });
 }
