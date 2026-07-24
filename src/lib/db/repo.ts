@@ -6,6 +6,7 @@ import {
   type TopicRow,
   type GoalRow,
   type AttemptRow,
+  type VocabRow,
 } from "./sqlite";
 import { isoWeekKey, localDateStr } from "../date";
 
@@ -414,6 +415,61 @@ export function spendCoin(userId: number): { ok: boolean; coins: number } {
   if (user.coins <= 0) return { ok: false, coins: 0 };
   db.prepare("UPDATE users SET coins = coins - 1 WHERE id = ?").run(userId);
   return { ok: true, coins: user.coins - 1 };
+}
+
+// --- Vokabelheft ---
+
+function vocabKey(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[.!?,;:"']/g, "");
+}
+
+// Erfasst eine abgefragte Vokabel (Upsert) und aktualisiert die Leitner-Box:
+// richtig → Box hoch (max 5), falsch → zurück auf Box 1 (kommt bald wieder).
+export function recordVocab(
+  userId: number,
+  subjectId: number,
+  prompt: string,
+  answer: string,
+  isCorrect: boolean,
+): void {
+  const db = getDb();
+  const norm = `${vocabKey(prompt)}|${vocabKey(answer)}`;
+  const now = Date.now();
+  const row = db
+    .prepare("SELECT id, box FROM vocab WHERE user_id = ? AND norm = ?")
+    .get(userId, norm) as { id: number; box: number } | undefined;
+  if (!row) {
+    db.prepare(
+      `INSERT INTO vocab (user_id, subject_id, prompt, answer, norm, seen, correct, wrong, box, last_seen, created_at)
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+    ).run(userId, subjectId, prompt, answer, norm, isCorrect ? 1 : 0, isCorrect ? 0 : 1, isCorrect ? 2 : 1, now, now);
+  } else {
+    const box = isCorrect ? Math.min(row.box + 1, 5) : 1;
+    db.prepare(
+      `UPDATE vocab SET seen = seen + 1, correct = correct + ?, wrong = wrong + ?, box = ?, last_seen = ?, prompt = ?, answer = ? WHERE id = ?`,
+    ).run(isCorrect ? 1 : 0, isCorrect ? 0 : 1, box, now, prompt, answer, row.id);
+  }
+}
+
+// Fällige Vokabeln zum Wiederholen: niedrige Box (oft falsch) und lange nicht
+// gesehen zuerst.
+export function dueVocab(userId: number, subjectId: number, limit: number): VocabRow[] {
+  return getDb()
+    .prepare(
+      `SELECT * FROM vocab WHERE user_id = ? AND subject_id = ? AND box < 5
+       ORDER BY box ASC, COALESCE(last_seen, 0) ASC LIMIT ?`,
+    )
+    .all(userId, subjectId, limit) as VocabRow[];
+}
+
+export function listVocab(userId: number): VocabRow[] {
+  return getDb()
+    .prepare("SELECT * FROM vocab WHERE user_id = ? ORDER BY wrong DESC, last_seen DESC")
+    .all(userId) as VocabRow[];
 }
 
 // --- Highscores ---

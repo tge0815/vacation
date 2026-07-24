@@ -253,6 +253,29 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       }
     },
   },
+  {
+    // Vokabelheft pro Kind: abgefragte Vokabeln + richtig/falsch + Leitner-Box
+    // für die Wiederholung.
+    name: "012_vocab",
+    sql: `
+      CREATE TABLE IF NOT EXISTS vocab (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        subject_id INTEGER NOT NULL,
+        prompt TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        norm TEXT NOT NULL,
+        seen INTEGER NOT NULL DEFAULT 0,
+        correct INTEGER NOT NULL DEFAULT 0,
+        wrong INTEGER NOT NULL DEFAULT 0,
+        box INTEGER NOT NULL DEFAULT 1,
+        last_seen INTEGER,
+        created_at INTEGER NOT NULL,
+        UNIQUE(user_id, norm)
+      );
+      CREATE INDEX IF NOT EXISTS idx_vocab_user ON vocab(user_id);
+    `,
+  },
 ];
 
 const GEOGRAFIE_TOPICS: Array<{
@@ -488,6 +511,21 @@ export type GoalRow = {
   subject_id: number;
   daily_minutes: number; // Zielwert: Minuten (goal_type='minutes') oder Aufgaben-Anzahl ('count')
   goal_type: string;
+};
+
+export type VocabRow = {
+  id: number;
+  user_id: number;
+  subject_id: number;
+  prompt: string;
+  answer: string;
+  norm: string;
+  seen: number;
+  correct: number;
+  wrong: number;
+  box: number;
+  last_seen: number | null;
+  created_at: number;
 };
 
 export type AttemptRow = {

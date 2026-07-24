@@ -2,19 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Users, Target, BarChart3, Bot, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, Target, BarChart3, Bot, BookMarked, Loader2 } from "lucide-react";
 import { PinPad } from "@/components/PinPad";
 import { ParentKids } from "./ParentKids";
 import { ParentGoals } from "./ParentGoals";
 import { ParentProgress } from "./ParentProgress";
 import { ParentCoach } from "./ParentCoach";
+import { ParentVocab } from "./ParentVocab";
 
-type Tab = "kinder" | "ziele" | "fortschritt" | "coach";
+type Tab = "kinder" | "ziele" | "fortschritt" | "vokabeln" | "coach";
 
 const TABS: { key: Tab; label: string; Icon: typeof Users }[] = [
   { key: "kinder", label: "Kinder", Icon: Users },
   { key: "ziele", label: "Ziele & Themen", Icon: Target },
   { key: "fortschritt", label: "Fortschritt", Icon: BarChart3 },
+  { key: "vokabeln", label: "Vokabelheft", Icon: BookMarked },
   { key: "coach", label: "Lern-Coach", Icon: Bot },
 ];
 
@@ -92,6 +94,7 @@ export function ParentArea() {
       {tab === "kinder" && <ParentKids />}
       {tab === "ziele" && <ParentGoals />}
       {tab === "fortschritt" && <ParentProgress />}
+      {tab === "vokabeln" && <ParentVocab />}
       {tab === "coach" && <ParentCoach />}
     </main>
   );

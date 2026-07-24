@@ -1,5 +1,12 @@
-import { getSubject, getTopic, listTopics, recentAttempts, recentTopicPerformance } from "../db/repo";
-import type { SubjectRow, TopicRow } from "../db/sqlite";
+import {
+  getSubject,
+  getTopic,
+  listTopics,
+  recentAttempts,
+  recentTopicPerformance,
+  dueVocab,
+} from "../db/repo";
+import type { SubjectRow, TopicRow, VocabRow } from "../db/sqlite";
 import { runAgentJson, DEFAULT_MODEL, REASONING_MODEL } from "./run";
 import {
   ExerciseBatchSchema,
@@ -70,6 +77,21 @@ export async function generateBatch(opts: {
     forceReading: t.input_hint === "reading",
   }));
 
+  // Fällige Vokabeln als Wiederholung einmischen: jede 2. Vokabel-Aufgabe ist
+  // eine Wiederholung aus dem Vokabelheft (falls fällige vorhanden).
+  const reviews = new Map<number, VocabRow>();
+  if (items.some((it) => it.topic.key === "vokabeln")) {
+    const due = dueVocab(opts.userId, opts.subjectId, count);
+    let di = 0;
+    let vi = 0;
+    items.forEach((it, idx) => {
+      if (it.topic.key === "vokabeln") {
+        if (vi % 2 === 0 && di < due.length) reviews.set(idx, due[di++]);
+        vi++;
+      }
+    });
+  }
+
   const avoid = recentAttempts({ userId: opts.userId, subjectId: opts.subjectId, limit: 8 })
     .map((a) => {
       try {
@@ -80,32 +102,58 @@ export async function generateBatch(opts: {
     })
     .filter(Boolean);
 
-  const result = await runAgentJson({
-    systemPrompt: exerciseBatchSystemPrompt(),
-    prompt: exerciseBatchPrompt({
-      subject: subject.name,
-      items: items.map((it) => ({
-        topic: it.topic.name,
-        topicDescription: it.topic.description ?? "",
-        difficulty: it.difficulty,
-        forceReading: it.forceReading,
-      })),
-      avoid,
-    }),
-    schema: ExerciseBatchSchema,
-    model: DEFAULT_MODEL,
-    label: `generate(${subject.key}×${items.length})`,
-  });
+  // Nur die Nicht-Wiederholungs-Aufgaben von der KI erzeugen lassen.
+  const aiIdx = items.map((_, i) => i).filter((i) => !reviews.has(i));
+  const aiExByIdx = new Map<number, Exercise>();
+  if (aiIdx.length > 0) {
+    const aiItems = aiIdx.map((i) => items[i]);
+    const result = await runAgentJson({
+      systemPrompt: exerciseBatchSystemPrompt(),
+      prompt: exerciseBatchPrompt({
+        subject: subject.name,
+        items: aiItems.map((it) => ({
+          topic: it.topic.name,
+          topicDescription: it.topic.description ?? "",
+          difficulty: it.difficulty,
+          forceReading: it.forceReading,
+        })),
+        avoid,
+      }),
+      schema: ExerciseBatchSchema,
+      model: DEFAULT_MODEL,
+      label: `generate(${subject.key}×${aiItems.length})`,
+    });
+    result.exercises.slice(0, aiItems.length).forEach((ex, k) => aiExByIdx.set(aiIdx[k], ex));
+  }
 
-  // Ergebnisse mit den vorgegebenen Themen zusammenführen (nur so viele wie geliefert).
-  return result.exercises.slice(0, items.length).map((exercise, i) => {
-    const { topic, difficulty, forceReading } = items[i];
-    if (forceReading) {
-      exercise.inputMode = "reading";
-      if (!exercise.passage) exercise.passage = exercise.question;
+  const out: GeneratedExercise[] = [];
+  items.forEach((it, idx) => {
+    if (reviews.has(idx)) {
+      const v = reviews.get(idx)!;
+      out.push({
+        exercise: {
+          inputMode: "text",
+          instruction: "Wiederholung 🔁",
+          question: v.prompt,
+          solution: v.answer,
+          acceptable: [],
+          difficulty: it.difficulty,
+        },
+        subject,
+        topic: it.topic,
+        difficulty: it.difficulty,
+      });
+    } else {
+      const exercise = aiExByIdx.get(idx);
+      if (!exercise) return;
+      if (it.forceReading) {
+        exercise.inputMode = "reading";
+        if (!exercise.passage) exercise.passage = exercise.question;
+      }
+      out.push({ exercise, subject, topic: it.topic, difficulty: it.difficulty });
     }
-    return { exercise, subject, topic, difficulty };
   });
+  return out;
 }
 
 export async function gradeExercise(opts: {

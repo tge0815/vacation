@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { gradeExercise } from "@/lib/ai/exercises";
 import { tryLocalGrade } from "@/lib/ai/localGrade";
-import { insertAttempt, awardCorrectCoins } from "@/lib/db/repo";
+import { insertAttempt, awardCorrectCoins, recordVocab } from "@/lib/db/repo";
 import { ExerciseSchema, type Exercise } from "@/lib/ai/schemas";
 
 export const runtime = "nodejs";
@@ -56,6 +56,11 @@ export async function POST(req: NextRequest) {
       score: grade.score,
       durationSec: body.durationSec ?? 0,
     });
+
+    // Vokabeln fürs Vokabelheft mitschreiben (und Wiederholung ermöglichen).
+    if (body.topicKey === "vokabeln") {
+      recordVocab(body.userId, body.subjectId, exercise.question, exercise.solution, grade.isCorrect);
+    }
 
     const reward = awardCorrectCoins(body.userId);
 
