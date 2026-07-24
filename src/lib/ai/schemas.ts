@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const INPUT_MODES = ["text", "choice", "number", "fraction", "reading"] as const;
+export const INPUT_MODES = ["text", "choice", "number", "fraction", "reading", "gaps"] as const;
 export type InputMode = (typeof INPUT_MODES)[number];
 
 // Eine generierte Aufgabe. `solution`/`solutionExplanation` werden dem Kind
@@ -11,6 +11,8 @@ export const ExerciseSchema = z.object({
   question: z.string().min(1),
   choices: z.array(z.string()).optional(),
   passage: z.string().optional(),
+  // Bei inputMode "gaps": eine Lösung pro Lücke (Reihenfolge = Reihenfolge der ___).
+  blanks: z.array(z.string()).optional(),
   solution: z.string().min(1),
   // Weitere gültige Antworten (Synonyme, alternative Formen/Schreibweisen),
   // damit die Bewertung lokal und sofort passieren kann.

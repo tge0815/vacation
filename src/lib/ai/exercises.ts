@@ -5,6 +5,7 @@ import {
   recentAttempts,
   recentTopicPerformance,
   dueVocab,
+  getGoal,
 } from "../db/repo";
 import type { SubjectRow, TopicRow, VocabRow } from "../db/sqlite";
 import { runAgentJson, DEFAULT_MODEL, REASONING_MODEL } from "./run";
@@ -33,7 +34,9 @@ export type GeneratedExercise = {
 };
 
 // Adaptive Schwierigkeit aus der jüngsten Performance des Kindes im Thema.
-function nextDifficulty(userId: number, topicId: number): number {
+function nextDifficulty(userId: number, topicId: number, fixedLevel = 0): number {
+  // Feste Stufe (Eltern-Einstellung) überschreibt die Adaptivität.
+  if (fixedLevel > 0) return Math.min(5, Math.max(1, fixedLevel));
   const perf = recentTopicPerformance(userId, topicId);
   let d = perf.lastDifficulty || 2;
   if (perf.attempts >= 3) {
@@ -71,9 +74,10 @@ export async function generateBatch(opts: {
     chosen = Array.from({ length: count }, (_, i) => topics[(offset + i) % topics.length]);
   }
 
+  const level = getGoal(opts.userId, opts.subjectId).level;
   const items = chosen.map((t) => ({
     topic: t,
-    difficulty: nextDifficulty(opts.userId, t.id),
+    difficulty: nextDifficulty(opts.userId, t.id, level),
     forceReading: t.input_hint === "reading",
   }));
 

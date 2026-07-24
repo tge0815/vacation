@@ -142,7 +142,7 @@ export function setTopicActive(id: number, active: boolean): void {
 // --- Goals ---
 
 export type GoalType = "minutes" | "count";
-export type Goal = { target: number; type: GoalType };
+export type Goal = { target: number; type: GoalType; level: number };
 
 export function listGoals(userId: number): GoalRow[] {
   return getDb()
@@ -153,24 +153,37 @@ export function listGoals(userId: number): GoalRow[] {
 export function getGoal(
   userId: number,
   subjectId: number,
-  fallback: Goal = { target: 0, type: "minutes" },
+  fallback: Goal = { target: 0, type: "minutes", level: 0 },
 ): Goal {
   const row = getDb()
-    .prepare("SELECT daily_minutes, goal_type FROM goals WHERE user_id = ? AND subject_id = ?")
-    .get(userId, subjectId) as { daily_minutes: number; goal_type: string } | undefined;
+    .prepare("SELECT daily_minutes, goal_type, level FROM goals WHERE user_id = ? AND subject_id = ?")
+    .get(userId, subjectId) as
+    | { daily_minutes: number; goal_type: string; level: number }
+    | undefined;
   if (!row) return fallback;
-  return { target: row.daily_minutes, type: row.goal_type === "count" ? "count" : "minutes" };
+  return {
+    target: row.daily_minutes,
+    type: row.goal_type === "count" ? "count" : "minutes",
+    level: row.level ?? 0,
+  };
 }
 
-export function setGoal(userId: number, subjectId: number, target: number, type: GoalType): void {
+export function setGoal(
+  userId: number,
+  subjectId: number,
+  target: number,
+  type: GoalType,
+  level = 0,
+): void {
   getDb()
     .prepare(
-      `INSERT INTO goals (user_id, subject_id, daily_minutes, goal_type) VALUES (?, ?, ?, ?)
+      `INSERT INTO goals (user_id, subject_id, daily_minutes, goal_type, level) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(user_id, subject_id) DO UPDATE SET
          daily_minutes = excluded.daily_minutes,
-         goal_type = excluded.goal_type`,
+         goal_type = excluded.goal_type,
+         level = excluded.level`,
     )
-    .run(userId, subjectId, Math.max(0, Math.round(target)), type);
+    .run(userId, subjectId, Math.max(0, Math.round(target)), type, Math.max(0, Math.min(5, Math.round(level))));
 }
 
 // --- Attempts ---

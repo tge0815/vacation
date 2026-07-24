@@ -276,6 +276,11 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       CREATE INDEX IF NOT EXISTS idx_vocab_user ON vocab(user_id);
     `,
   },
+  {
+    // Schwierigkeits-Stufe pro Fach: 0 = automatisch (adaptiv), 1-5 = fest.
+    name: "013_goal_level",
+    sql: `ALTER TABLE goals ADD COLUMN level INTEGER NOT NULL DEFAULT 0;`,
+  },
 ];
 
 const GEOGRAFIE_TOPICS: Array<{
@@ -511,6 +516,7 @@ export type GoalRow = {
   subject_id: number;
   daily_minutes: number; // Zielwert: Minuten (goal_type='minutes') oder Aufgaben-Anzahl ('count')
   goal_type: string;
+  level: number; // 0 = adaptiv, 1-5 = feste Schwierigkeit
 };
 
 export type VocabRow = {

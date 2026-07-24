@@ -66,6 +66,7 @@ export function ExercisePlayer({
   const [gen, setGen] = useState<Gen | null>(null);
   const [answer, setAnswer] = useState("");
   const [choice, setChoice] = useState<string | null>(null);
+  const [gapValues, setGapValues] = useState<string[]>([]);
   const [grade, setGrade] = useState<Grade | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -173,6 +174,7 @@ export function ExercisePlayer({
     setGrade(null);
     setAnswer("");
     setChoice(null);
+    setGapValues([]);
     setErr(null);
     speech.setTranscript("");
     showGen(await takeNext());
@@ -320,8 +322,56 @@ export function ExercisePlayer({
     }
   }
 
+  // Mehrfach-Lücken werden lokal bewertet (jede Lücke gegen blanks[i]).
+  async function submitGaps() {
+    if (!gen || submitting) return;
+    const blanks = gen.exercise.blanks ?? [];
+    if (blanks.length === 0) return;
+    if (gapValues.some((v, i) => i < blanks.length && !(v ?? "").trim())) return;
+    setSubmitting(true);
+    const durationSec = Math.round((Date.now() - exerciseStart.current) / 1000);
+    const norm = (s: string) =>
+      s.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.!?,;:]+$/, "");
+    const correctFlags = blanks.map((b, i) => norm(gapValues[i] ?? "") === norm(b));
+    const nCorrect = correctFlags.filter(Boolean).length;
+    const isCorrect = nCorrect === blanks.length;
+    const gradeObj: Grade = {
+      isCorrect,
+      score: Math.round((nCorrect / blanks.length) * 100),
+      feedback: isCorrect ? "Alle Lücken richtig!" : `${nCorrect} von ${blanks.length} Lücken richtig.`,
+      correction: isCorrect ? undefined : `Richtig: ${blanks.join(" · ")}`,
+    };
+    try {
+      const r = await fetch("/api/exercise/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          subjectId,
+          topicId: gen.topicId,
+          difficulty: gen.difficulty,
+          inputMode: "gaps",
+          question: gen.exercise.question,
+          answer: gapValues.join(" | "),
+          solution: blanks.join(" / "),
+          isCorrect,
+          durationSec,
+        }),
+      });
+      const d = await r.json();
+      setGrade(gradeObj);
+      afterGrade(durationSec, Boolean(d.reward?.awarded));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Fehler");
+      setPhase("error");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   const c = color(meta?.color ?? "sky");
   const ex = gen?.exercise;
+  const gapsMode = ex?.inputMode === "gaps" && (ex.blanks?.length ?? 0) > 0;
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-6 flex-1 flex flex-col">
@@ -435,6 +485,8 @@ export function ExercisePlayer({
             <p className="text-sm font-medium text-neutral-500 mb-2">{ex.instruction}</p>
             {ex.inputMode === "reading" ? (
               <p className="text-xl leading-relaxed font-medium">{ex.passage ?? ex.question}</p>
+            ) : gapsMode ? (
+              <p className="text-sm text-neutral-400">Fülle alle Lücken aus.</p>
             ) : (
               <p className="text-xl leading-relaxed font-semibold whitespace-pre-wrap">{ex.question}</p>
             )}
@@ -475,6 +527,41 @@ export function ExercisePlayer({
                   onEvaluate={submitReading}
                   onSkip={nextExercise}
                 />
+              ) : gapsMode ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    submitGaps();
+                  }}
+                  className="flex flex-col gap-3"
+                >
+                  <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-5 text-lg leading-loose">
+                    {ex.question.split("___").map((seg, i, arr) => (
+                      <span key={i}>
+                        <span className="whitespace-pre-wrap">{seg}</span>
+                        {i < arr.length - 1 && (
+                          <input
+                            value={gapValues[i] ?? ""}
+                            onChange={(e) => {
+                              const next = [...gapValues];
+                              next[i] = e.target.value;
+                              setGapValues(next);
+                            }}
+                            className="mx-1 inline-block w-28 align-baseline rounded-lg border-b-2 border-sky-400 bg-sky-50 dark:bg-sky-950/40 px-2 py-0.5 text-base focus:outline-none focus:border-sky-600"
+                          />
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className={`inline-flex items-center justify-center gap-2 rounded-xl ${c.bg} text-white font-semibold py-3 disabled:opacity-40 hover:opacity-90`}
+                  >
+                    {submitting ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                    Prüfen
+                  </button>
+                </form>
               ) : (
                 <form
                   onSubmit={(e) => {

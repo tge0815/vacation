@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
       subjectName: s.name,
       goalType: g.type,
       target: g.target,
+      level: g.level,
     };
   });
   return NextResponse.json({ goals });
@@ -26,14 +27,14 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const body = (await req.json()) as {
     userId?: number;
-    goals?: { subjectId: number; goalType?: GoalType; target?: number }[];
+    goals?: { subjectId: number; goalType?: GoalType; target?: number; level?: number }[];
   };
   if (!body.userId || !Array.isArray(body.goals)) {
     return NextResponse.json({ error: "userId/goals fehlt" }, { status: 400 });
   }
   for (const g of body.goals) {
     const type: GoalType = g.goalType === "count" ? "count" : "minutes";
-    setGoal(body.userId, g.subjectId, g.target ?? 0, type);
+    setGoal(body.userId, g.subjectId, g.target ?? 0, type, g.level ?? 0);
   }
   return NextResponse.json({ ok: true, goals: listGoals(body.userId) });
 }

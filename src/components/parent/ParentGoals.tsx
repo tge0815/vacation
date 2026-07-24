@@ -9,8 +9,8 @@ import type { PublicUser } from "@/lib/serialize";
 type Topic = { id: number; name: string; description: string | null; active: number };
 type Subject = { id: number; key: string; name: string; color: string; icon: string; topics: Topic[] };
 type GoalType = "minutes" | "count";
-type Goal = { subjectId: number; subjectName: string; goalType: GoalType; target: number };
-type GoalState = { type: GoalType; target: number };
+type Goal = { subjectId: number; subjectName: string; goalType: GoalType; target: number; level: number };
+type GoalState = { type: GoalType; target: number; level: number };
 
 export function ParentGoals() {
   const [users, setUsers] = useState<PublicUser[]>([]);
@@ -41,7 +41,7 @@ export function ParentGoals() {
       .then((r) => r.json())
       .then((d: { goals: Goal[] }) => {
         const m: Record<number, GoalState> = {};
-        d.goals.forEach((g) => (m[g.subjectId] = { type: g.goalType, target: g.target }));
+        d.goals.forEach((g) => (m[g.subjectId] = { type: g.goalType, target: g.target, level: g.level }));
         setGoals(m);
       });
   }, [userId]);
@@ -49,7 +49,12 @@ export function ParentGoals() {
   function setGoalField(subjectId: number, patch: Partial<GoalState>) {
     setGoals((prev) => ({
       ...prev,
-      [subjectId]: { type: prev[subjectId]?.type ?? "minutes", target: prev[subjectId]?.target ?? 0, ...patch },
+      [subjectId]: {
+        type: prev[subjectId]?.type ?? "minutes",
+        target: prev[subjectId]?.target ?? 0,
+        level: prev[subjectId]?.level ?? 0,
+        ...patch,
+      },
     }));
   }
 
@@ -64,6 +69,7 @@ export function ParentGoals() {
           subjectId: Number(subjectId),
           goalType: g.type,
           target: g.target,
+          level: g.level,
         })),
       }),
     });
@@ -117,20 +123,20 @@ export function ParentGoals() {
         {subjects.map((s) => {
           const Icon = subjectIcon(s.icon);
           const c = color(s.color);
-          const g = goals[s.id] ?? { type: "minutes" as GoalType, target: 0 };
+          const g = goals[s.id] ?? { type: "minutes" as GoalType, target: 0, level: 0 };
           return (
-            <div key={s.id} className="flex items-center gap-3 flex-wrap">
+            <div key={s.id} className="flex items-center gap-2 flex-wrap">
               <span className={`size-9 rounded-xl ${c.soft} flex items-center justify-center`}>
                 <Icon size={18} className={c.text} />
               </span>
-              <span className="flex-1 min-w-[80px] font-medium">{s.name}</span>
+              <span className="flex-1 min-w-[70px] font-medium">{s.name}</span>
               <input
                 type="number"
                 min={0}
                 max={120}
                 value={g.target}
                 onChange={(e) => setGoalField(s.id, { target: Number(e.target.value) })}
-                className="w-20 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-1.5 text-right nums focus:border-sky-500 focus:outline-none"
+                className="w-16 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-transparent px-2 py-1.5 text-right nums focus:border-sky-500 focus:outline-none"
               />
               {/* Umschalter Minuten / Aufgaben */}
               <div className="inline-flex rounded-lg bg-neutral-100 dark:bg-neutral-800 p-0.5 text-xs font-medium">
@@ -138,7 +144,7 @@ export function ParentGoals() {
                   <button
                     key={t}
                     onClick={() => setGoalField(s.id, { type: t })}
-                    className={`px-2.5 py-1 rounded-md transition ${
+                    className={`px-2 py-1 rounded-md transition ${
                       g.type === t ? "bg-white dark:bg-neutral-700 shadow-sm" : "text-neutral-500"
                     }`}
                   >
@@ -146,6 +152,20 @@ export function ParentGoals() {
                   </button>
                 ))}
               </div>
+              {/* Schwierigkeit */}
+              <select
+                value={g.level}
+                onChange={(e) => setGoalField(s.id, { level: Number(e.target.value) })}
+                title="Schwierigkeit"
+                className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-transparent px-2 py-1.5 text-xs focus:border-sky-500 focus:outline-none"
+              >
+                <option value={0}>Auto</option>
+                <option value={1}>Stufe 1 (leicht)</option>
+                <option value={2}>Stufe 2</option>
+                <option value={3}>Stufe 3</option>
+                <option value={4}>Stufe 4</option>
+                <option value={5}>Stufe 5 (schwer)</option>
+              </select>
             </div>
           );
         })}
