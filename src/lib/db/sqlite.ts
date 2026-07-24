@@ -237,6 +237,22 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       );
     `,
   },
+  {
+    // Coins nach je 10 richtigen Aufgaben. correct_coins = bereits dafür
+    // vergebene Coins. Für Bestandskinder auf floor(richtige/10) setzen, damit
+    // es keinen rückwirkenden Schwall gibt.
+    name: "011_correct_coins",
+    sql: `ALTER TABLE users ADD COLUMN correct_coins INTEGER NOT NULL DEFAULT 0;`,
+    run: (db: Database.Database) => {
+      const users = db.prepare("SELECT id FROM users").all() as Array<{ id: number }>;
+      const cnt = db.prepare("SELECT COUNT(*) AS c FROM attempts WHERE user_id = ? AND is_correct = 1");
+      const upd = db.prepare("UPDATE users SET correct_coins = ? WHERE id = ?");
+      for (const u of users) {
+        const c = (cnt.get(u.id) as { c: number }).c;
+        upd.run(Math.floor(c / 10), u.id);
+      }
+    },
+  },
 ];
 
 const GEOGRAFIE_TOPICS: Array<{
@@ -441,6 +457,7 @@ export type UserRow = {
   grade: number;
   sort: number;
   coins: number;
+  correct_coins: number;
   created_at: number;
 };
 

@@ -365,22 +365,24 @@ export function ExercisePlayer({
               <div className="text-7xl animate-wiggle" aria-hidden>
                 🪙
               </div>
-              <h2 className="text-2xl font-bold">{meta?.name} geschafft — +1 Coin!</h2>
-              <p className="text-neutral-500">
-                Stark! Mit Coins kannst du im Spiele-Bereich spielen.
-              </p>
+              <h2 className="text-2xl font-bold">10 richtig — +1 Coin!</h2>
+              <p className="text-neutral-500">Stark! Mit Coins kannst du im Spiele-Bereich spielen.</p>
               <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => {
+                    setShowCelebrate(false);
+                    setCoinAwarded(false);
+                    nextExercise();
+                  }}
+                  className="rounded-xl bg-emerald-500 text-white px-5 py-2.5 font-semibold hover:opacity-90"
+                >
+                  Weiter üben
+                </button>
                 <button
                   onClick={() => router.push(`/kind/${userId}/spiele`)}
                   className="inline-flex items-center gap-2 rounded-xl bg-amber-500 text-white px-5 py-2.5 font-semibold hover:opacity-90"
                 >
                   <Gamepad2 size={18} /> Spielen
-                </button>
-                <button
-                  onClick={() => router.push(`/kind/${userId}`)}
-                  className="rounded-xl bg-neutral-200 dark:bg-neutral-800 px-5 py-2.5 font-semibold hover:opacity-90"
-                >
-                  Zur Übersicht
                 </button>
               </div>
             </>

@@ -383,6 +383,29 @@ export function awardSubjectCoin(
   return { awarded: false, coins: user.coins };
 }
 
+// Vergibt Coins nach je 10 richtigen Aufgaben (fachübergreifend, laufend).
+export function awardCorrectCoins(userId: number): { awarded: boolean; coins: number } {
+  const db = getDb();
+  const user = getUser(userId);
+  if (!user) return { awarded: false, coins: 0 };
+  const total = (
+    db
+      .prepare("SELECT COUNT(*) AS c FROM attempts WHERE user_id = ? AND is_correct = 1")
+      .get(userId) as { c: number }
+  ).c;
+  const target = Math.floor(total / 10);
+  if (target > user.correct_coins) {
+    const gain = target - user.correct_coins;
+    db.prepare("UPDATE users SET coins = coins + ?, correct_coins = ? WHERE id = ?").run(
+      gain,
+      target,
+      userId,
+    );
+    return { awarded: true, coins: user.coins + gain };
+  }
+  return { awarded: false, coins: user.coins };
+}
+
 // Zieht einen Coin ab (fürs Spielen). Gibt ok=false zurück, wenn keiner da ist.
 export function spendCoin(userId: number): { ok: boolean; coins: number } {
   const db = getDb();

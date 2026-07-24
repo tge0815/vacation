@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { insertAttempt, awardSubjectCoin } from "@/lib/db/repo";
+import { insertAttempt, awardCorrectCoins } from "@/lib/db/repo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,6 +45,6 @@ export async function POST(req: NextRequest) {
     durationSec: body.durationSec ?? 0,
   });
 
-  const reward = awardSubjectCoin(body.userId, body.subjectId);
+  const reward = awardCorrectCoins(body.userId);
   return NextResponse.json({ ok: true, reward });
 }
