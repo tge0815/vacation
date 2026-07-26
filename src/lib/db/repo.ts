@@ -397,24 +397,30 @@ export function awardSubjectCoin(
   return { awarded: false, coins: user.coins };
 }
 
-// Vergibt Coins nach je 10 richtigen Aufgaben (fachübergreifend, laufend).
+// Vergibt Coins nach je 10 richtigen Aufgaben PRO TAG (fachübergreifend).
+// Jeder Tag startet frisch bei 0 — kein Übertrag vom Vortag.
 export function awardCorrectCoins(userId: number): { awarded: boolean; coins: number } {
   const db = getDb();
   const user = getUser(userId);
   if (!user) return { awarded: false, coins: 0 };
-  const total = (
+  const date = localDateStr();
+  const correctToday = (
     db
-      .prepare("SELECT COUNT(*) AS c FROM attempts WHERE user_id = ? AND is_correct = 1")
-      .get(userId) as { c: number }
+      .prepare("SELECT COUNT(*) AS c FROM attempts WHERE user_id = ? AND is_correct = 1 AND date = ?")
+      .get(userId, date) as { c: number }
   ).c;
-  const target = Math.floor(total / 10);
-  if (target > user.correct_coins) {
-    const gain = target - user.correct_coins;
-    db.prepare("UPDATE users SET coins = coins + ?, correct_coins = ? WHERE id = ?").run(
-      gain,
-      target,
-      userId,
-    );
+  const target = Math.floor(correctToday / 10);
+  const row = db
+    .prepare("SELECT awarded FROM coin_day WHERE user_id = ? AND date = ?")
+    .get(userId, date) as { awarded: number } | undefined;
+  const awarded = row?.awarded ?? 0;
+  if (target > awarded) {
+    const gain = target - awarded;
+    db.prepare(
+      `INSERT INTO coin_day (user_id, date, awarded) VALUES (?, ?, ?)
+       ON CONFLICT(user_id, date) DO UPDATE SET awarded = excluded.awarded`,
+    ).run(userId, date, target);
+    db.prepare("UPDATE users SET coins = coins + ? WHERE id = ?").run(gain, userId);
     return { awarded: true, coins: user.coins + gain };
   }
   return { awarded: false, coins: user.coins };

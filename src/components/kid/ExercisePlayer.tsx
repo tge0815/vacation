@@ -333,8 +333,11 @@ export function ExercisePlayer({
     if (gapValues.some((v, i) => i < blanks.length && !(v ?? "").trim())) return;
     setSubmitting(true);
     const durationSec = Math.round((Date.now() - exerciseStart.current) / 1000);
-    const norm = (s: string) =>
-      s.trim().toLowerCase().replace(/\s+/g, " ").replace(/[.!?,;:]+$/, "");
+    const caseSensitive = gen.subjectKey === "deutsch";
+    const norm = (s: string) => {
+      const t = s.trim().replace(/\s+/g, " ").replace(/[.!?,;:]+$/, "");
+      return caseSensitive ? t : t.toLowerCase();
+    };
     const correctFlags = blanks.map((b, i) => norm(gapValues[i] ?? "") === norm(b));
     const nCorrect = correctFlags.filter(Boolean).length;
     const isCorrect = nCorrect === blanks.length;

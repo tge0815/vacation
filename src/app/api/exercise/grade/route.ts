@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     // Erst lokal versuchen (Multiple-Choice/Zahlen/exakte Treffer) — kein
     // KI-Aufruf, sofortige Antwort. Sonst KI bewerten lassen.
     const grade =
-      tryLocalGrade(exercise, answer) ??
+      tryLocalGrade(exercise, answer, body.subjectKey === "deutsch") ??
       (await gradeExercise({
         subjectKey: body.subjectKey ?? "",
         topicKey: body.topicKey,

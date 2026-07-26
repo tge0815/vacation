@@ -281,6 +281,19 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
     name: "013_goal_level",
     sql: `ALTER TABLE goals ADD COLUMN level INTEGER NOT NULL DEFAULT 0;`,
   },
+  {
+    // Coins pro Tag frisch zählen: awarded = wie viele 10er-Blöcke heute schon
+    // vergeben wurden. So startet jeder Tag bei 0 (kein Übertrag vom Vortag).
+    name: "014_coin_day",
+    sql: `
+      CREATE TABLE IF NOT EXISTS coin_day (
+        user_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        awarded INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, date)
+      );
+    `,
+  },
 ];
 
 const GEOGRAFIE_TOPICS: Array<{

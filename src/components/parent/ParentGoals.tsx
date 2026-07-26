@@ -21,7 +21,8 @@ export function ParentGoals() {
   const [loading, setLoading] = useState(true);
 
   const loadSubjects = useCallback(async () => {
-    const d = (await (await fetch("/api/subjects")).json()) as { subjects: Subject[] };
+    // ?all=1: auch deaktivierte Themen zeigen, damit man sie wieder anschalten kann.
+    const d = (await (await fetch("/api/subjects?all=1")).json()) as { subjects: Subject[] };
     setSubjects(d.subjects);
   }, []);
 

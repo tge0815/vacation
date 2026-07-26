@@ -19,12 +19,12 @@ function praise(seed: string): string {
   return PRAISE[h];
 }
 
-function norm(s: string): string {
-  return s
+function norm(s: string, caseSensitive = false): string {
+  const t = s
     .trim()
-    .toLowerCase()
     .replace(/\s+/g, " ")
     .replace(/[.!?,;:]+$/, "");
+  return caseSensitive ? t : t.toLowerCase();
 }
 
 function parseNum(s: string): number | null {
@@ -44,7 +44,12 @@ function wrong(exercise: Exercise): Grade {
   };
 }
 
-export function tryLocalGrade(exercise: Exercise, answer: string): Grade | null {
+// caseSensitive=true (Deutsch): Groß-/Kleinschreibung zählt.
+export function tryLocalGrade(
+  exercise: Exercise,
+  answer: string,
+  caseSensitive = false,
+): Grade | null {
   if (exercise.inputMode === "reading") return null; // Vorlesen → KI
 
   const a = answer.trim();
@@ -63,8 +68,10 @@ export function tryLocalGrade(exercise: Exercise, answer: string): Grade | null 
   }
 
   // choice / text / fraction: gegen solution + acceptable (normalisiert) prüfen.
-  const accepted = new Set([exercise.solution, ...(exercise.acceptable ?? [])].map(norm));
-  return accepted.has(norm(a))
+  const accepted = new Set(
+    [exercise.solution, ...(exercise.acceptable ?? [])].map((s) => norm(s, caseSensitive)),
+  );
+  return accepted.has(norm(a, caseSensitive))
     ? { isCorrect: true, score: 100, feedback: praise(a) }
     : wrong(exercise);
 }
