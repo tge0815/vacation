@@ -172,16 +172,24 @@ export function ExercisePlayer({
   );
 
   // Aus Event-Handlern aufgerufen (Button „Nächste Aufgabe", Fehler-Retry).
-  const nextExercise = useCallback(async () => {
-    setPhase("loading");
+  const nextExercise = useCallback(() => {
     setGrade(null);
     setAnswer("");
     setChoice(null);
     setGapValues([]);
     setErr(null);
     speech.setTranscript("");
-    showGen(await takeNext());
-  }, [takeNext, showGen, speech]);
+    // Vorrat da? Sofort nehmen — KEIN Ladebildschirm.
+    if (queueRef.current.length > 0) {
+      const g = queueRef.current.shift() ?? null;
+      bumpQueue();
+      showGen(g);
+      return;
+    }
+    // Vorrat leer → laden.
+    setPhase("loading");
+    void (async () => showGen(await takeNext()))();
+  }, [takeNext, showGen, speech, bumpQueue]);
 
   useEffect(() => {
     // Bei Fach-/Themenwechsel alte Warteschlange verwerfen.
