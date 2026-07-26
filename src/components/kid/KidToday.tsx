@@ -44,6 +44,12 @@ export function KidToday({ userId }: { userId: number }) {
       .then((r) => r.json())
       .then(setProg)
       .catch(() => {});
+    // Vorrat für alle Fächer im Hintergrund vorwärmen → schnellerer Start.
+    fetch("/api/exercise/warm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    }).catch(() => {});
   }, [userId]);
 
   const totalGoal = prog?.subjectsWithGoal ?? 0;

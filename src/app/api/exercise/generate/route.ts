@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateBatch } from "@/lib/ai/exercises";
+import { generateBatch, type GeneratedExercise } from "@/lib/ai/exercises";
+import { takeFromPool, warmSubject } from "@/lib/ai/pool";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,13 +16,23 @@ export async function POST(req: NextRequest) {
   if (!body.userId || !body.subjectId) {
     return NextResponse.json({ error: "userId/subjectId fehlt" }, { status: 400 });
   }
+  const userId = body.userId;
+  const subjectId = body.subjectId;
+  const count = body.count ?? 1;
   try {
-    const batch = await generateBatch({
-      userId: body.userId,
-      subjectId: body.subjectId,
-      topicId: body.topicId ?? null,
-      count: body.count ?? 1,
-    });
+    // Bei festem Thema nicht aus dem (gemischten) Pool bedienen.
+    let batch: GeneratedExercise[] = body.topicId ? [] : takeFromPool(userId, subjectId, count);
+    if (batch.length < count) {
+      const more = await generateBatch({
+        userId,
+        subjectId,
+        topicId: body.topicId ?? null,
+        count: count - batch.length,
+      });
+      batch = [...batch, ...more];
+    }
+    // Pool im Hintergrund wieder auffüllen.
+    if (!body.topicId) warmSubject(userId, subjectId);
     const exercises = batch.map(({ exercise, subject, topic, difficulty }) => ({
       exercise,
       subjectId: subject.id,
