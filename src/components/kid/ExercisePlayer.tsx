@@ -83,6 +83,7 @@ export function ExercisePlayer({
   const queueRef = useRef<Gen[]>([]);
   const fetchingRef = useRef(false);
   const activeRef = useRef(true);
+  const lastErrorRef = useRef<string | null>(null);
   const BATCH = 5;
   const TARGET = 10; // Vorrat wird bis hierhin aufgefüllt
   // Reaktive Spiegel der Warteschlange für die Vorrats-Anzeige.
@@ -110,8 +111,10 @@ export function ExercisePlayer({
         });
         const d = await r.json();
         if (!r.ok) throw new Error(d.error ?? "Fehler");
+        lastErrorRef.current = null;
         return (d.exercises ?? []) as Gen[];
-      } catch {
+      } catch (e) {
+        lastErrorRef.current = e instanceof Error ? e.message : "Verbindungsfehler";
         return [];
       }
     },
@@ -156,7 +159,7 @@ export function ExercisePlayer({
   const showGen = useCallback(
     (g: Gen | null) => {
       if (!g) {
-        setErr("Aufgabe konnte nicht geladen werden.");
+        setErr(lastErrorRef.current ?? "Aufgabe konnte nicht geladen werden.");
         setPhase("error");
         return;
       }

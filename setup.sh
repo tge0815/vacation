@@ -79,6 +79,18 @@ for f in "$AUTH_DIR/credentials.json" "$AUTH_DIR/.credentials.json" "$AUTH_DIR/a
   [ -f "$f" ] && HAS_AUTH=1 && break
 done
 
+# Erneutes Login erzwingen mit:  RELOGIN=1 ./setup.sh
+# (nötig, wenn das Max-Plan-Token abgelaufen ist und keine Aufgaben mehr laden)
+if [ "${RELOGIN:-0}" = "1" ]; then
+  warn "RELOGIN gesetzt — starte frischen Login-Flow"
+  claude /logout >/dev/null 2>&1 || true
+  claude || true
+  HAS_AUTH=0
+  for f in "$AUTH_DIR/credentials.json" "$AUTH_DIR/.credentials.json" "$AUTH_DIR/auth.json"; do
+    [ -f "$f" ] && HAS_AUTH=1 && break
+  done
+fi
+
 if [ "$HAS_AUTH" = "0" ]; then
   warn "Keine Claude-Code-Auth gefunden in $AUTH_DIR"
   echo
@@ -133,6 +145,28 @@ if [ "$READY" != "1" ]; then
   warn "App antwortet noch nicht. Logs:"
   docker compose logs --tail=40 lernferien
   exit 1
+fi
+
+# ──── 6b. KI-/Auth-Check ──────────────────────────────────────────────
+step "KI-Anmeldung prüfen (Max-Plan)"
+AI_OK=0
+for i in 1 2 3; do
+  RESP=$(curl -fs --max-time 50 http://localhost:3001/api/health 2>/dev/null || echo "")
+  if echo "$RESP" | grep -q '"ok":true'; then
+    AI_OK=1
+    break
+  fi
+  sleep 2
+done
+if [ "$AI_OK" = "1" ]; then
+  log "KI erreichbar & angemeldet"
+else
+  warn "KI antwortet nicht / nicht angemeldet. Meldung:"
+  echo "   $RESP"
+  echo
+  warn "Wahrscheinlich ist das Max-Plan-Token abgelaufen. So neu anmelden:"
+  echo "   1) claude          # auf dem HOST kurz starten; falls nötig neu einloggen"
+  echo "   2) RELOGIN=1 ./setup.sh    # erzwingt frischen Login + Sync ins Volume"
 fi
 
 # ──── 7. Status ───────────────────────────────────────────────────────
