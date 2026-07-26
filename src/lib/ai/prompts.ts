@@ -71,6 +71,11 @@ ${INPUT_MODE_DOC}
 
 ${DIFFICULTY_RUBRIC}
 
+WICHTIG — die Antwort muss EINDEUTIG sein (sonst wird richtiges als falsch gewertet):
+- Freitext ("text"/"gaps") NUR, wenn die Lösung durch Grammatik oder Satzkontext eindeutig festgelegt ist (z.B. Verbform/Zeit, Artikel, ein durch den Satz erzwungenes Wort). Trage ALLE gleichwertigen Varianten in "acceptable" ein.
+- Wenn an einer Lücke mehrere Wörter sinnvoll wären (z.B. ein frei wählbares Adjektiv wie "Mein Bruder ist ___"), dann NICHT als Freitext! Nutze inputMode "choice" mit 3-4 Optionen, von denen genau EINE gemeint ist — oder formuliere den Satz so, dass der Kontext die Antwort erzwingt (z.B. "Er hat keine Angst, er ist ___" → mutig).
+- Erfinde nie eine Aufgabe, bei der viele Antworten richtig wären, aber nur eine akzeptiert wird.
+
 Gib GENAU dieses JSON zurück (ein Objekt mit einem Array "exercises"):
 {
   "exercises": [
@@ -93,7 +98,7 @@ WICHTIG für die automatische Bewertung (die Antwort wird OHNE KI exakt verglich
 - "solution" ist EINDEUTIG und knapp — genau das, was das Kind eintippen soll (z.B. das gesuchte Wort oder die Wortform), NICHT ein ganzer Satz, außer die Aufgabe verlangt es.
 - "acceptable": liste ALLE weiteren Antworten, die auch als richtig gelten (Synonyme, alternative gültige Formen/Schreibweisen, mit/ohne Artikel). Wenn es nur eine richtige Antwort gibt, lass das Feld weg oder gib [].
 - "solutionExplanation" IMMER ausfüllen: 1 kurzer, freundlicher Satz für den Fall, dass das Kind falsch liegt.
-- Groß-/Kleinschreibung und Satzzeichen werden beim Vergleich ignoriert.
+- Achte auf KORREKTE Groß-/Kleinschreibung in solution/blanks — bei Deutsch wird sie streng geprüft (Nomen groß, Verben klein). Satzzeichen am Ende werden ignoriert.
 
 Die Aufgaben im Array MÜSSEN in derselben Reihenfolge stehen wie unten vorgegeben und sich voneinander unterscheiden.`;
 }
