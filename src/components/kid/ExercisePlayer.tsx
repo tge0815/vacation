@@ -353,7 +353,6 @@ export function ExercisePlayer({
       isCorrect,
       score: Math.round((nCorrect / blanks.length) * 100),
       feedback: isCorrect ? "Alle Lücken richtig!" : `${nCorrect} von ${blanks.length} Lücken richtig.`,
-      correction: isCorrect ? undefined : `Richtig: ${blanks.join(" · ")}`,
     };
     try {
       const r = await fetch("/api/exercise/log", {
@@ -502,7 +501,7 @@ export function ExercisePlayer({
             ) : gapsMode ? (
               <p className="text-sm text-neutral-400">Fülle alle Lücken aus.</p>
             ) : (
-              <p className="text-xl leading-relaxed font-semibold whitespace-pre-wrap">{ex.question}</p>
+              <QuestionText text={ex.question} />
             )}
           </div>
 
@@ -614,6 +613,14 @@ export function ExercisePlayer({
           {/* Bewertung */}
           {phase === "graded" && grade && (
             <div className="flex flex-col gap-4 animate-pop">
+              {gapsMode && (
+                <GapReview
+                  question={ex.question}
+                  blanks={ex.blanks ?? []}
+                  answers={gapValues}
+                  caseSensitive={gen?.subjectKey === "deutsch"}
+                />
+              )}
               <div
                 className={`rounded-2xl p-5 ${
                   grade.isCorrect
@@ -662,6 +669,80 @@ export function ExercisePlayer({
         </div>
       ) : null}
     </main>
+  );
+}
+
+// Fragetext darstellen. Enthält der Text Flaggen-Emoji (Flaggen-Raten), werden
+// diese groß und zentriert gezeigt — der restliche Text darunter.
+function QuestionText({ text }: { text: string }) {
+  const flags = text.match(/\p{Regional_Indicator}{2}/gu);
+  if (flags && flags.length > 0) {
+    const rest = text
+      .replace(/\p{Regional_Indicator}{2}/gu, "")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    return (
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="text-[6rem] leading-none sm:text-[8rem]" aria-hidden>
+          {flags.join(" ")}
+        </div>
+        {rest && (
+          <p className="text-xl leading-relaxed font-semibold whitespace-pre-wrap">{rest}</p>
+        )}
+      </div>
+    );
+  }
+  return <p className="text-xl leading-relaxed font-semibold whitespace-pre-wrap">{text}</p>;
+}
+
+// Lückentext nach der Bewertung: ganzer Satz mit eingesetzten Antworten.
+// Richtige Lücken grün, falsche rot durchgestrichen mit Korrektur daneben.
+function GapReview({
+  question,
+  blanks,
+  answers,
+  caseSensitive,
+}: {
+  question: string;
+  blanks: string[];
+  answers: string[];
+  caseSensitive: boolean;
+}) {
+  const norm = (s: string) => {
+    const t = s.trim().replace(/\s+/g, " ").replace(/[.!?,;:]+$/, "");
+    return caseSensitive ? t : t.toLowerCase();
+  };
+  const segs = question.split("___");
+  return (
+    <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-5 text-lg leading-loose">
+      {segs.map((seg, i, arr) => {
+        const hasGap = i < arr.length - 1;
+        const given = (answers[i] ?? "").trim();
+        const solution = blanks[i] ?? "";
+        const correct = hasGap && norm(given) === norm(solution);
+        return (
+          <span key={i}>
+            <span className="whitespace-pre-wrap">{seg}</span>
+            {hasGap &&
+              (correct ? (
+                <span className="mx-1 rounded-md bg-emerald-500/15 px-2 py-0.5 font-semibold text-emerald-700 dark:text-emerald-400">
+                  {given}
+                </span>
+              ) : (
+                <span className="mx-1 inline-flex items-center gap-1">
+                  <span className="rounded-md bg-rose-500/15 px-2 py-0.5 font-semibold text-rose-600 dark:text-rose-400 line-through decoration-2">
+                    {given || "—"}
+                  </span>
+                  <span className="text-neutral-400">→</span>
+                  <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 font-semibold text-emerald-700 dark:text-emerald-400">
+                    {solution}
+                  </span>
+                </span>
+              ))}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
