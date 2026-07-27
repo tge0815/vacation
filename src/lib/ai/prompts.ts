@@ -16,7 +16,10 @@ const INPUT_MODE_DOC = `inputMode bestimmt, wie das Kind antwortet:
 - "number": eine Zahl (z.B. 42 oder 3.5). "solution" ist die Zahl als String.
 - "fraction": ein Bruch, Format "z/n" (z.B. "3/4") oder eine ganze Zahl. "solution" im selben Format.
 - "reading": ein Vorlese-Text. Dann MUSS "passage" der laut vorzulesende Text sein und "question"/"instruction" die Vorlese-Anweisung. "solution" = der Zieltext (identisch zu passage).
-- "gaps": MEHRERE Lücken in einem Satz/Text. In "question" für JEDE Lücke ein ___ setzen. "blanks" ist ein Array mit der richtigen Antwort pro Lücke, in derselben Reihenfolge wie die ___. "solution" ist der Lesbarkeit halber alle Lücken mit " / " verbunden. Nutze diesen Modus für anspruchsvollere Lückentexte mit 2-4 Lücken.`;
+- "gaps": MEHRERE Lücken in einem Satz/Text. In "question" für JEDE Lücke ein ___ setzen. "blanks" ist ein Array mit der richtigen Antwort pro Lücke, in derselben Reihenfolge wie die ___. "solution" ist der Lesbarkeit halber alle Lücken mit " / " verbunden. Nutze diesen Modus für anspruchsvollere Lückentexte mit 2-4 Lücken.
+  ZWINGEND — das Kind MUSS erkennen, was in jede Lücke gehört. Eine Lücke ohne Vorgabe ist verboten:
+  • Verb-/Zeitformen (z.B. Thema „Zeiten"): schreibe die Grundform (Infinitiv) direkt HINTER jede Lücke in Klammern, z.B. "Gestern ___ (fahren) wir ans Meer." und nenne in "instruction" die gesuchte Zeitform, z.B. "Setze die Verben im Perfekt ein.". "blanks" enthält die richtig gebeugte Form ("sind gefahren").
+  • Sonstige einzusetzende Wörter (Artikel, Präpositionen, feste Wörter): gib in "instruction" einen Wortkasten mit ALLEN einzusetzenden Wörtern in gemischter Reihenfolge an, z.B. "Setze ein: der – die – das". Gern 1-2 Ablenker-Wörter mehr als Lücken.`;
 
 const DIFFICULTY_RUBRIC = `So setzt du die Schwierigkeit konkret um (difficulty 1-5):
 - Deutsch: Stufe 1-2 kurze einfache Sätze, EINE Lücke. Stufe 3 normal. Stufe 4-5 längere, komplexere Sätze; bei Lückentext MEHRERE Lücken (inputMode "gaps", 2-4 Lücken); seltenere Wörter/Zeitformen.
