@@ -1,8 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Users, Target, BarChart3, Bot, BookMarked, Gift, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Users,
+  Target,
+  BarChart3,
+  Bot,
+  BookMarked,
+  Gift,
+  Bell,
+  Loader2,
+} from "lucide-react";
 import { PinPad } from "@/components/PinPad";
 import { ParentKids } from "./ParentKids";
 import { ParentGoals } from "./ParentGoals";
@@ -29,24 +39,60 @@ export function ParentArea() {
   const [pinError, setPinError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("kinder");
   const [pendingRewards, setPendingRewards] = useState(0);
+  const [notifyPerm, setNotifyPerm] = useState<string>("default");
+  const prevPending = useRef<number | null>(null);
 
   useEffect(() => {
     fetch("/api/parent")
       .then((r) => r.json())
       .then((d: { pinSet: boolean }) => setLocked(d.pinSet))
       .catch(() => setLocked(false));
+    if (typeof Notification !== "undefined") setNotifyPerm(Notification.permission);
   }, []);
 
+  async function enableNotifications() {
+    if (typeof Notification === "undefined") return;
+    try {
+      const p = await Notification.requestPermission();
+      setNotifyPerm(p);
+    } catch {}
+  }
+
+  async function notifyNewRequests(count: number) {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const title = "Neue Bildschirmzeit-Anfrage";
+    const body = count === 1 ? "Ein Kind möchte Bildschirmzeit." : `${count} offene Anfragen.`;
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if (reg) {
+        await reg.showNotification(title, {
+          body,
+          icon: "/icons/icon-192.png",
+          badge: "/icons/icon-192.png",
+          tag: "reward-request",
+        });
+      } else {
+        new Notification(title, { body });
+      }
+    } catch {}
+  }
+
   // Anzahl offener Belohnungs-Anfragen (Badge am Tab). Aktualisiert beim
-  // Tab-Wechsel UND regelmäßig, damit neue Anfragen von selbst auftauchen.
+  // Tab-Wechsel UND regelmäßig; bei einer NEUEN Anfrage kommt eine
+  // Benachrichtigung (sofern erlaubt und die PWA offen ist).
   useEffect(() => {
     if (locked) return;
     const refresh = () =>
       fetch("/api/rewards/requests?status=pending")
         .then((r) => r.json())
-        .then((d: { requests?: PublicRewardRequest[] }) =>
-          setPendingRewards(d.requests?.length ?? 0),
-        )
+        .then((d: { requests?: PublicRewardRequest[] }) => {
+          const n = d.requests?.length ?? 0;
+          if (prevPending.current !== null && n > prevPending.current) {
+            void notifyNewRequests(n);
+          }
+          prevPending.current = n;
+          setPendingRewards(n);
+        })
         .catch(() => {});
     refresh();
     const t = setInterval(refresh, 15000);
@@ -92,7 +138,18 @@ export function ParentArea() {
         >
           <ArrowLeft size={16} /> Zur Profil-Auswahl
         </button>
-        <h1 className="text-lg font-semibold">Eltern-Bereich</h1>
+        <div className="flex items-center gap-3">
+          {typeof Notification !== "undefined" && notifyPerm !== "granted" && (
+            <button
+              onClick={enableNotifications}
+              title="Benachrichtigung bei neuen Anfragen"
+              className="inline-flex items-center gap-1.5 text-sm text-sky-600 dark:text-sky-400 hover:opacity-80"
+            >
+              <Bell size={16} /> Benachrichtigungen
+            </button>
+          )}
+          <h1 className="text-lg font-semibold">Eltern-Bereich</h1>
+        </div>
       </header>
 
       <nav className="flex gap-1 mb-6 rounded-xl bg-neutral-100 dark:bg-neutral-900 p-1 overflow-x-auto">

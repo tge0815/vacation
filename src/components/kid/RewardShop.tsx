@@ -77,7 +77,8 @@ export function RewardShop({ userId }: { userId: number }) {
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Bildschirmzeit</h1>
         <p className="text-neutral-500 mt-1 text-sm">
-          Tausche deine Coins gegen Bildschirmzeit. Deine Eltern bestätigen die Anfrage.
+          Tausche deine Coins gegen Bildschirmzeit. Die Coins werden gleich eingesetzt – lehnen
+          deine Eltern ab, bekommst du sie zurück.
         </p>
       </div>
 

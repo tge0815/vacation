@@ -679,25 +679,30 @@ export function getRewardRequest(id: number): RewardRequestRow | null {
   );
 }
 
-// Kind stellt eine Anfrage. Coins werden NOCH NICHT abgezogen (erst bei
-// Bestätigung durch die Eltern).
+// Kind stellt eine Anfrage. Coins werden SOFORT abgezogen (sonst könnte das Kind
+// beliebig oft beantragen). Bei Ablehnung erstatten die Eltern sie zurück.
 export function createRewardRequest(
   userId: number,
   familyId: number,
   packageId: number,
-): { ok: boolean; error?: string; request?: RewardRequestRow } {
+): { ok: boolean; error?: string; request?: RewardRequestRow; coins?: number } {
   const db = getDb();
   const pkg = getRewardPackage(packageId, familyId);
   if (!pkg || !pkg.active) return { ok: false, error: "Paket nicht verfügbar" };
   const user = getUser(userId);
   if (!user) return { ok: false, error: "Kind nicht gefunden" };
   if (user.coins < pkg.coins) return { ok: false, error: "Nicht genug Coins" };
-  const info = db
-    .prepare(
-      "INSERT INTO reward_requests (user_id, family_id, minutes, coins, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)",
-    )
-    .run(userId, familyId, pkg.minutes, pkg.coins, Date.now());
-  return { ok: true, request: getRewardRequest(Number(info.lastInsertRowid))! };
+  let requestId = 0;
+  db.transaction(() => {
+    db.prepare("UPDATE users SET coins = coins - ? WHERE id = ?").run(pkg.coins, userId);
+    const info = db
+      .prepare(
+        "INSERT INTO reward_requests (user_id, family_id, minutes, coins, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)",
+      )
+      .run(userId, familyId, pkg.minutes, pkg.coins, Date.now());
+    requestId = Number(info.lastInsertRowid);
+  })();
+  return { ok: true, request: getRewardRequest(requestId)!, coins: user.coins - pkg.coins };
 }
 
 export function listRewardRequestsForFamily(
@@ -731,9 +736,9 @@ export function countPendingRewardRequests(familyId: number): number {
   ).c;
 }
 
-// Eltern-Entscheidung. Bei Bestätigung werden die Coins jetzt abgezogen
-// (mit erneuter Deckungsprüfung, da das Kind zwischenzeitlich Coins ausgegeben
-// haben könnte).
+// Eltern-Entscheidung. Coins wurden bereits beim Beantragen abgezogen:
+// - Bestätigen: nur Status setzen.
+// - Ablehnen: Coins an das Kind zurückerstatten.
 export function decideRewardRequest(
   id: number,
   familyId: number,
@@ -743,24 +748,25 @@ export function decideRewardRequest(
   const req = getRewardRequest(id);
   if (!req || req.family_id !== familyId) return { ok: false, error: "Nicht gefunden" };
   if (req.status !== "pending") return { ok: false, error: "Schon entschieden" };
-  if (!approve) {
-    db.prepare("UPDATE reward_requests SET status = 'declined', decided_at = ? WHERE id = ?").run(
-      Date.now(),
-      id,
-    );
-    return { ok: true };
-  }
-  const user = getUser(req.user_id);
-  if (!user) return { ok: false, error: "Kind nicht gefunden" };
-  if (user.coins < req.coins) return { ok: false, error: "Kind hat nicht genug Coins" };
-  db.transaction(() => {
-    db.prepare("UPDATE users SET coins = coins - ? WHERE id = ?").run(req.coins, req.user_id);
+  if (approve) {
     db.prepare("UPDATE reward_requests SET status = 'approved', decided_at = ? WHERE id = ?").run(
       Date.now(),
       id,
     );
+    const user = getUser(req.user_id);
+    return { ok: true, coins: user?.coins };
+  }
+  // Ablehnen → Coins zurückgeben.
+  let coins = 0;
+  db.transaction(() => {
+    db.prepare("UPDATE users SET coins = coins + ? WHERE id = ?").run(req.coins, req.user_id);
+    db.prepare("UPDATE reward_requests SET status = 'declined', decided_at = ? WHERE id = ?").run(
+      Date.now(),
+      id,
+    );
+    coins = getUser(req.user_id)?.coins ?? 0;
   })();
-  return { ok: true, coins: user.coins - req.coins };
+  return { ok: true, coins };
 }
 
 // --- Für die native Companion-App (Apple Screen Time) ---
