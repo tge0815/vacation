@@ -23,6 +23,7 @@ export function ParentVocab() {
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoMsg, setPhotoMsg] = useState<string | null>(null);
+  const [applyAll, setApplyAll] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   function loadVocab(uid: number) {
@@ -33,19 +34,22 @@ export function ParentVocab() {
   }
 
   function importSchoolVocab() {
-    if (!userId || importing) return;
+    if ((!userId && !applyAll) || importing) return;
     setImporting(true);
     setImportMsg(null);
     fetch("/api/vocab", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify({ userId, allUsers: applyAll }),
     })
       .then((r) => r.json())
-      .then((d: { added?: number; skipped?: number; total?: number; error?: string }) => {
+      .then((d: { added?: number; skipped?: number; total?: number; users?: number; error?: string }) => {
         if (d.error) setImportMsg(d.error);
-        else setImportMsg(`${d.added} neu hinzugefügt, ${d.skipped} schon vorhanden (${d.total} gesamt).`);
-        loadVocab(userId);
+        else {
+          const who = applyAll ? ` (für ${d.users ?? users.length} Kinder)` : "";
+          setImportMsg(`${d.added} neu, ${d.skipped} schon vorhanden${who} — ${d.total} Wörter.`);
+        }
+        if (userId) loadVocab(userId);
       })
       .catch(() => setImportMsg("Import fehlgeschlagen."))
       .finally(() => setImporting(false));
@@ -54,7 +58,7 @@ export function ParentVocab() {
   function onPhotoPicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // gleiches Foto erneut wählbar machen
-    if (!file || !userId) return;
+    if (!file || (!userId && !applyAll)) return;
     setPhotoBusy(true);
     setPhotoMsg("Foto wird gelesen …");
     const reader = new FileReader();
@@ -63,18 +67,18 @@ export function ParentVocab() {
       fetch("/api/vocab/photo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, image }),
+        body: JSON.stringify({ userId, allUsers: applyAll, image }),
       })
         .then((r) => r.json())
-        .then((d: { added?: number; skipped?: number; total?: number; error?: string }) => {
+        .then((d: { added?: number; skipped?: number; total?: number; users?: number; error?: string }) => {
           if (d.error) setPhotoMsg(d.error);
           else if ((d.total ?? 0) === 0)
             setPhotoMsg("Keine Vokabeln im Foto erkannt. Schärferes Foto probieren.");
-          else
-            setPhotoMsg(
-              `${d.added} neu, ${d.skipped} schon vorhanden (${d.total} im Foto erkannt).`,
-            );
-          loadVocab(userId);
+          else {
+            const who = applyAll ? ` (für ${d.users ?? users.length} Kinder)` : "";
+            setPhotoMsg(`${d.added} neu, ${d.skipped} schon vorhanden${who} — ${d.total} im Foto erkannt.`);
+          }
+          if (userId) loadVocab(userId);
         })
         .catch(() => setPhotoMsg("Foto-Import fehlgeschlagen."))
         .finally(() => setPhotoBusy(false));
@@ -92,6 +96,8 @@ export function ParentVocab() {
       .then((d: { users: PublicUser[] }) => {
         setUsers(d.users);
         if (d.users[0]) setUserId(d.users[0].id);
+        // Gleiche Klasse = gleiche Vokabeln: bei mehreren Kindern gleich für alle.
+        setApplyAll(d.users.length > 1);
       });
   }, []);
 
@@ -124,6 +130,20 @@ export function ParentVocab() {
           </button>
         ))}
       </div>
+
+      {users.length > 1 && (
+        <label className="flex items-center gap-2 text-sm rounded-xl bg-violet-500/10 px-3 py-2 w-fit cursor-pointer">
+          <input
+            type="checkbox"
+            checked={applyAll}
+            onChange={(e) => setApplyAll(e.target.checked)}
+            className="size-4 accent-violet-500"
+          />
+          <span>
+            Import für <strong>alle Kinder</strong> übernehmen (gleiche Klasse)
+          </span>
+        </label>
+      )}
 
       <p className="text-xs text-neutral-500">
         Vokabeln des Kindes (eigener Lernbereich „Vokabeln“). Falsche kommen automatisch wieder dran,

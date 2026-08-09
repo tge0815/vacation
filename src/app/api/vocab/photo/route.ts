@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { importVocab, listSubjects } from "@/lib/db/repo";
-import { authUser } from "@/lib/auth/server";
+import { importVocab, listSubjects, listUsers } from "@/lib/db/repo";
+import { authUser, familyIdFrom, unauthorized } from "@/lib/auth/server";
 import {
   extractVocabFromImage,
   ALLOWED_IMAGE_TYPES,
@@ -11,12 +11,27 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-// POST /api/vocab/photo { userId, image }  (image = data-URL vom Foto)
-// Die KI liest die Vokabeln aus dem Foto und importiert sie ins Vokabelheft.
+// POST /api/vocab/photo { userId?, allUsers?, image }  (image = data-URL vom Foto)
+// Die KI liest die Vokabeln aus dem Foto und importiert sie ins Vokabelheft —
+// entweder für EIN Kind (userId) oder für ALLE Kinder der Familie (allUsers).
 export async function POST(req: NextRequest) {
-  const body = (await req.json()) as { userId?: number; image?: string };
-  const gate = await authUser(req, Number(body.userId));
-  if (gate instanceof NextResponse) return gate;
+  const body = (await req.json()) as { userId?: number; allUsers?: boolean; image?: string };
+
+  // Zielkinder bestimmen: bei "alle Kinder" serverseitig aus der Familie
+  // ableiten (nicht dem Client vertrauen), sonst das einzelne Kind prüfen.
+  let targetUserIds: number[];
+  if (body.allUsers) {
+    const familyId = await familyIdFrom(req);
+    if (!familyId) return unauthorized();
+    targetUserIds = listUsers(familyId).map((u) => u.id);
+    if (targetUserIds.length === 0) {
+      return NextResponse.json({ error: "Keine Kinder angelegt." }, { status: 400 });
+    }
+  } else {
+    const gate = await authUser(req, Number(body.userId));
+    if (gate instanceof NextResponse) return gate;
+    targetUserIds = [Number(body.userId)];
+  }
 
   if (!body.image) {
     return NextResponse.json({ error: "Kein Bild übergeben." }, { status: 400 });
@@ -49,12 +64,24 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Foto nur EINMAL von der KI lesen, dann in alle Zielkinder übernehmen.
     const pairs = await extractVocabFromImage({ base64, mediaType });
     if (pairs.length === 0) {
-      return NextResponse.json({ added: 0, skipped: 0, total: 0, pairs: [] });
+      return NextResponse.json({ added: 0, skipped: 0, total: 0, users: targetUserIds.length });
     }
-    const res = importVocab(Number(body.userId), vok.id, pairs);
-    return NextResponse.json({ ...res, total: pairs.length, pairs });
+    let added = 0;
+    let skipped = 0;
+    for (const uid of targetUserIds) {
+      const r = importVocab(uid, vok.id, pairs);
+      added += r.added;
+      skipped += r.skipped;
+    }
+    return NextResponse.json({
+      added,
+      skipped,
+      total: pairs.length,
+      users: targetUserIds.length,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Foto konnte nicht gelesen werden.";
     return NextResponse.json({ error: msg }, { status: 500 });
