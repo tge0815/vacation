@@ -2,21 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Users, Target, BarChart3, Bot, BookMarked, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, Target, BarChart3, Bot, BookMarked, Gift, Loader2 } from "lucide-react";
 import { PinPad } from "@/components/PinPad";
 import { ParentKids } from "./ParentKids";
 import { ParentGoals } from "./ParentGoals";
 import { ParentProgress } from "./ParentProgress";
 import { ParentCoach } from "./ParentCoach";
 import { ParentVocab } from "./ParentVocab";
+import { ParentRewards } from "./ParentRewards";
+import type { PublicRewardRequest } from "@/lib/serialize";
 
-type Tab = "kinder" | "ziele" | "fortschritt" | "vokabeln" | "coach";
+type Tab = "kinder" | "ziele" | "fortschritt" | "vokabeln" | "belohnungen" | "coach";
 
 const TABS: { key: Tab; label: string; Icon: typeof Users }[] = [
   { key: "kinder", label: "Kinder", Icon: Users },
   { key: "ziele", label: "Ziele & Themen", Icon: Target },
   { key: "fortschritt", label: "Fortschritt", Icon: BarChart3 },
   { key: "vokabeln", label: "Vokabelheft", Icon: BookMarked },
+  { key: "belohnungen", label: "Belohnungen", Icon: Gift },
   { key: "coach", label: "Lern-Coach", Icon: Bot },
 ];
 
@@ -25,6 +28,7 @@ export function ParentArea() {
   const [locked, setLocked] = useState<boolean | null>(null);
   const [pinError, setPinError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("kinder");
+  const [pendingRewards, setPendingRewards] = useState(0);
 
   useEffect(() => {
     fetch("/api/parent")
@@ -32,6 +36,16 @@ export function ParentArea() {
       .then((d: { pinSet: boolean }) => setLocked(d.pinSet))
       .catch(() => setLocked(false));
   }, []);
+
+  // Anzahl offener Belohnungs-Anfragen (Badge am Tab). Aktualisiert beim
+  // Tab-Wechsel, damit die Zahl nach dem Bearbeiten stimmt.
+  useEffect(() => {
+    if (locked) return;
+    fetch("/api/rewards/requests?status=pending")
+      .then((r) => r.json())
+      .then((d: { requests?: PublicRewardRequest[] }) => setPendingRewards(d.requests?.length ?? 0))
+      .catch(() => {});
+  }, [locked, tab]);
 
   async function verify(pin: string) {
     const res = await fetch("/api/parent", {
@@ -87,6 +101,11 @@ export function ParentArea() {
             }`}
           >
             <Icon size={16} /> {label}
+            {key === "belohnungen" && pendingRewards > 0 && (
+              <span className="ml-0.5 rounded-full bg-rose-500 text-white text-[10px] leading-none px-1.5 py-0.5">
+                {pendingRewards}
+              </span>
+            )}
           </button>
         ))}
       </nav>
@@ -95,6 +114,7 @@ export function ParentArea() {
       {tab === "ziele" && <ParentGoals />}
       {tab === "fortschritt" && <ParentProgress />}
       {tab === "vokabeln" && <ParentVocab />}
+      {tab === "belohnungen" && <ParentRewards />}
       {tab === "coach" && <ParentCoach />}
     </main>
   );

@@ -556,6 +556,212 @@ export function spendCoin(userId: number): { ok: boolean; coins: number } {
   return { ok: true, coins: user.coins - 1 };
 }
 
+// --- Belohnungen: Coins gegen Bildschirmzeit ---
+
+export type RewardPackageRow = {
+  id: number;
+  family_id: number;
+  minutes: number;
+  coins: number;
+  sort: number;
+  active: number;
+};
+
+export type RewardRequestRow = {
+  id: number;
+  user_id: number;
+  family_id: number;
+  minutes: number;
+  coins: number;
+  status: "pending" | "approved" | "declined";
+  created_at: number;
+  decided_at: number | null;
+};
+
+export type RewardRequestWithChild = RewardRequestRow & {
+  user_name: string;
+  emoji: string;
+  color: string;
+};
+
+const DEFAULT_REWARD_PACKAGES: Array<[number, number]> = [[15, 3], [30, 5], [60, 9]];
+
+// Legt für eine Familie die Standard-Pakete an, falls noch keine existieren.
+export function seedRewardPackages(familyId: number): void {
+  const db = getDb();
+  const has = (
+    db.prepare("SELECT COUNT(*) c FROM reward_packages WHERE family_id = ?").get(familyId) as {
+      c: number;
+    }
+  ).c;
+  if (has > 0) return;
+  const ins = db.prepare(
+    "INSERT INTO reward_packages (family_id, minutes, coins, sort, active) VALUES (?, ?, ?, ?, 1)",
+  );
+  DEFAULT_REWARD_PACKAGES.forEach(([m, c], i) => ins.run(familyId, m, c, i));
+}
+
+export function listRewardPackages(familyId: number, activeOnly = false): RewardPackageRow[] {
+  const db = getDb();
+  seedRewardPackages(familyId);
+  const where = activeOnly ? "AND active = 1" : "";
+  return db
+    .prepare(`SELECT * FROM reward_packages WHERE family_id = ? ${where} ORDER BY sort, minutes`)
+    .all(familyId) as RewardPackageRow[];
+}
+
+export function getRewardPackage(id: number, familyId: number): RewardPackageRow | null {
+  return (
+    (getDb()
+      .prepare("SELECT * FROM reward_packages WHERE id = ? AND family_id = ?")
+      .get(id, familyId) as RewardPackageRow) ?? null
+  );
+}
+
+export function createRewardPackage(
+  familyId: number,
+  minutes: number,
+  coins: number,
+): RewardPackageRow {
+  const db = getDb();
+  const maxSort =
+    (db.prepare("SELECT MAX(sort) m FROM reward_packages WHERE family_id = ?").get(familyId) as {
+      m: number | null;
+    }).m ?? 0;
+  const info = db
+    .prepare(
+      "INSERT INTO reward_packages (family_id, minutes, coins, sort, active) VALUES (?, ?, ?, ?, 1)",
+    )
+    .run(familyId, minutes, coins, maxSort + 1);
+  return getRewardPackage(Number(info.lastInsertRowid), familyId)!;
+}
+
+export function updateRewardPackage(
+  id: number,
+  familyId: number,
+  fields: { minutes?: number; coins?: number; active?: boolean },
+): RewardPackageRow | null {
+  const db = getDb();
+  if (!getRewardPackage(id, familyId)) return null;
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  if (fields.minutes !== undefined) {
+    sets.push("minutes = ?");
+    vals.push(fields.minutes);
+  }
+  if (fields.coins !== undefined) {
+    sets.push("coins = ?");
+    vals.push(fields.coins);
+  }
+  if (fields.active !== undefined) {
+    sets.push("active = ?");
+    vals.push(fields.active ? 1 : 0);
+  }
+  if (sets.length) {
+    vals.push(id);
+    db.prepare(`UPDATE reward_packages SET ${sets.join(", ")} WHERE id = ?`).run(...vals);
+  }
+  return getRewardPackage(id, familyId);
+}
+
+export function deleteRewardPackage(id: number, familyId: number): boolean {
+  return (
+    getDb().prepare("DELETE FROM reward_packages WHERE id = ? AND family_id = ?").run(id, familyId)
+      .changes > 0
+  );
+}
+
+export function getRewardRequest(id: number): RewardRequestRow | null {
+  return (
+    (getDb().prepare("SELECT * FROM reward_requests WHERE id = ?").get(id) as RewardRequestRow) ??
+    null
+  );
+}
+
+// Kind stellt eine Anfrage. Coins werden NOCH NICHT abgezogen (erst bei
+// Bestätigung durch die Eltern).
+export function createRewardRequest(
+  userId: number,
+  familyId: number,
+  packageId: number,
+): { ok: boolean; error?: string; request?: RewardRequestRow } {
+  const db = getDb();
+  const pkg = getRewardPackage(packageId, familyId);
+  if (!pkg || !pkg.active) return { ok: false, error: "Paket nicht verfügbar" };
+  const user = getUser(userId);
+  if (!user) return { ok: false, error: "Kind nicht gefunden" };
+  if (user.coins < pkg.coins) return { ok: false, error: "Nicht genug Coins" };
+  const info = db
+    .prepare(
+      "INSERT INTO reward_requests (user_id, family_id, minutes, coins, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)",
+    )
+    .run(userId, familyId, pkg.minutes, pkg.coins, Date.now());
+  return { ok: true, request: getRewardRequest(Number(info.lastInsertRowid))! };
+}
+
+export function listRewardRequestsForFamily(
+  familyId: number,
+  status?: RewardRequestRow["status"],
+): RewardRequestWithChild[] {
+  const db = getDb();
+  const where = status ? "AND r.status = ?" : "";
+  const args = status ? [familyId, status] : [familyId];
+  return db
+    .prepare(
+      `SELECT r.*, u.name AS user_name, u.emoji, u.color
+       FROM reward_requests r JOIN users u ON u.id = r.user_id
+       WHERE r.family_id = ? ${where}
+       ORDER BY r.created_at DESC`,
+    )
+    .all(...args) as RewardRequestWithChild[];
+}
+
+export function listRewardRequestsForUser(userId: number, limit = 20): RewardRequestRow[] {
+  return getDb()
+    .prepare("SELECT * FROM reward_requests WHERE user_id = ? ORDER BY created_at DESC LIMIT ?")
+    .all(userId, limit) as RewardRequestRow[];
+}
+
+export function countPendingRewardRequests(familyId: number): number {
+  return (
+    getDb()
+      .prepare("SELECT COUNT(*) c FROM reward_requests WHERE family_id = ? AND status = 'pending'")
+      .get(familyId) as { c: number }
+  ).c;
+}
+
+// Eltern-Entscheidung. Bei Bestätigung werden die Coins jetzt abgezogen
+// (mit erneuter Deckungsprüfung, da das Kind zwischenzeitlich Coins ausgegeben
+// haben könnte).
+export function decideRewardRequest(
+  id: number,
+  familyId: number,
+  approve: boolean,
+): { ok: boolean; error?: string; coins?: number } {
+  const db = getDb();
+  const req = getRewardRequest(id);
+  if (!req || req.family_id !== familyId) return { ok: false, error: "Nicht gefunden" };
+  if (req.status !== "pending") return { ok: false, error: "Schon entschieden" };
+  if (!approve) {
+    db.prepare("UPDATE reward_requests SET status = 'declined', decided_at = ? WHERE id = ?").run(
+      Date.now(),
+      id,
+    );
+    return { ok: true };
+  }
+  const user = getUser(req.user_id);
+  if (!user) return { ok: false, error: "Kind nicht gefunden" };
+  if (user.coins < req.coins) return { ok: false, error: "Kind hat nicht genug Coins" };
+  db.transaction(() => {
+    db.prepare("UPDATE users SET coins = coins - ? WHERE id = ?").run(req.coins, req.user_id);
+    db.prepare("UPDATE reward_requests SET status = 'approved', decided_at = ? WHERE id = ?").run(
+      Date.now(),
+      id,
+    );
+  })();
+  return { ok: true, coins: user.coins - req.coins };
+}
+
 // --- Vokabelheft ---
 
 function vocabKey(s: string): string {

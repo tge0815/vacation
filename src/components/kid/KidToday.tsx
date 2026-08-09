@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Flame, Loader2, Play, Check, LogOut } from "lucide-react";
+import { ArrowLeft, Flame, Loader2, Play, Check, LogOut, Gift } from "lucide-react";
 import { ProgressRing } from "@/components/ProgressRing";
 import { color } from "@/components/colors";
 import { subjectIcon } from "@/components/subjectIcon";
@@ -92,14 +92,23 @@ export function KidToday({ userId }: { userId: number }) {
             </span>
           )}
           {user && (
-            <button
-              onClick={() => router.push(`/kind/${userId}/spiele`)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition"
-              title="Coins & Spiele"
-            >
-              <span className="text-base leading-none">🪙</span>
-              {user.coins}
-            </button>
+            <>
+              <button
+                onClick={() => router.push(`/kind/${userId}/belohnung`)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-3 py-1.5 text-sm font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-500/20 transition"
+                title="Coins gegen Bildschirmzeit eintauschen"
+              >
+                <Gift size={16} /> Zeit
+              </button>
+              <button
+                onClick={() => router.push(`/kind/${userId}/spiele`)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition"
+                title="Coins & Spiele"
+              >
+                <span className="text-base leading-none">🪙</span>
+                {user.coins}
+              </button>
+            </>
           )}
         </div>
       </header>

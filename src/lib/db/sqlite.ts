@@ -510,6 +510,50 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       );
     },
   },
+  {
+    // Coins gegen Bildschirmzeit: konfigurierbare Pakete (Minuten<->Coins) pro
+    // Familie + Anfragen der Kinder (Coins werden erst bei Bestätigung abgezogen).
+    name: "021_rewards",
+    run: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS reward_packages (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          family_id INTEGER NOT NULL,
+          minutes INTEGER NOT NULL,
+          coins INTEGER NOT NULL,
+          sort INTEGER NOT NULL DEFAULT 0,
+          active INTEGER NOT NULL DEFAULT 1
+        );
+        CREATE INDEX IF NOT EXISTS idx_reward_pkg_family ON reward_packages(family_id);
+        CREATE TABLE IF NOT EXISTS reward_requests (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          family_id INTEGER NOT NULL,
+          minutes INTEGER NOT NULL,
+          coins INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          created_at INTEGER NOT NULL,
+          decided_at INTEGER
+        );
+        CREATE INDEX IF NOT EXISTS idx_reward_req_family ON reward_requests(family_id, status);
+        CREATE INDEX IF NOT EXISTS idx_reward_req_user ON reward_requests(user_id, created_at);
+      `);
+      // Standard-Pakete für bereits bestehende Familien.
+      const fams = db.prepare("SELECT id FROM families").all() as Array<{ id: number }>;
+      const ins = db.prepare(
+        "INSERT INTO reward_packages (family_id, minutes, coins, sort, active) VALUES (?, ?, ?, ?, 1)",
+      );
+      const defaults: Array<[number, number]> = [[15, 3], [30, 5], [60, 9]];
+      for (const f of fams) {
+        const has = (
+          db.prepare("SELECT COUNT(*) c FROM reward_packages WHERE family_id = ?").get(f.id) as {
+            c: number;
+          }
+        ).c;
+        if (has === 0) defaults.forEach(([m, c], i) => ins.run(f.id, m, c, i));
+      }
+    },
+  },
 ];
 
 // Themen-Beschreibung fürs Vokabel-Training (eigener Lernbereich). Fragt EIN
