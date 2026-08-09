@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateBatch, type GeneratedExercise } from "@/lib/ai/exercises";
-import { takeFromPool, warmSubject } from "@/lib/ai/pool";
+import { takeFromPool, takeReturned, warmSubject, type ExerciseDTO } from "@/lib/ai/pool";
 import { authUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
@@ -23,20 +23,28 @@ export async function POST(req: NextRequest) {
   const subjectId = body.subjectId;
   const count = body.count ?? 1;
   try {
-    // Bei festem Thema nicht aus dem (gemischten) Pool bedienen.
-    let batch: GeneratedExercise[] = body.topicId ? [] : takeFromPool(userId, subjectId, count);
-    if (batch.length < count) {
-      const more = await generateBatch({
-        userId,
-        subjectId,
-        topicId: body.topicId ?? null,
-        count: count - batch.length,
-      });
-      batch = [...batch, ...more];
+    // 1) Zuerst zuvor zurückgegebene (bereits generierte) Aufgaben wiederverwenden.
+    //    Bei festem Thema nicht aus dem gemischten Rückgabe-/Pool-Vorrat bedienen.
+    const reused: ExerciseDTO[] = body.topicId ? [] : takeReturned(userId, subjectId, count);
+    const need = count - reused.length;
+
+    // 2) Rest aus dem vorgewärmten Pool, dann ggf. frisch generieren.
+    let batch: GeneratedExercise[] = [];
+    if (need > 0) {
+      batch = body.topicId ? [] : takeFromPool(userId, subjectId, need);
+      if (batch.length < need) {
+        const more = await generateBatch({
+          userId,
+          subjectId,
+          topicId: body.topicId ?? null,
+          count: need - batch.length,
+        });
+        batch = [...batch, ...more];
+      }
     }
     // Pool im Hintergrund wieder auffüllen.
     if (!body.topicId) warmSubject(userId, subjectId);
-    const exercises = batch.map(({ exercise, subject, topic, difficulty }) => ({
+    const fresh: ExerciseDTO[] = batch.map(({ exercise, subject, topic, difficulty }) => ({
       exercise,
       subjectId: subject.id,
       subjectKey: subject.key,
@@ -45,6 +53,7 @@ export async function POST(req: NextRequest) {
       topicName: topic.name,
       difficulty,
     }));
+    const exercises = [...reused, ...fresh];
     return NextResponse.json({ exercises });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Fehler beim Erzeugen";

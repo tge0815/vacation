@@ -1,5 +1,6 @@
 import { generateBatch, type GeneratedExercise } from "./exercises";
 import { listSubjects, getGoal } from "../db/repo";
+import type { Exercise } from "./schemas";
 
 // Server-seitiger Aufgaben-Vorrat pro (Kind, Fach). Bleibt über Fach-Wechsel
 // hinweg erhalten (im Speicher des Containers). Wird beim Öffnen der Kind-Seite
@@ -7,6 +8,40 @@ import { listSubjects, getGoal } from "../db/repo";
 
 const POOL = new Map<string, GeneratedExercise[]>();
 const key = (u: number, s: number) => `${u}:${s}`;
+
+// Fertig aufbereitete Aufgabe, wie sie der Client bekommt/zurückgibt.
+export type ExerciseDTO = {
+  exercise: Exercise;
+  subjectId: number;
+  subjectKey: string;
+  topicId: number;
+  topicKey: string;
+  topicName: string;
+  difficulty: number;
+};
+
+// Rückgabe-Speicher: Aufgaben, die der Client vorab geholt, aber beim Verlassen
+// der Kachel NICHT verbraucht hat. Werden beim nächsten Öffnen zuerst wieder
+// ausgegeben — so wird nichts umsonst generiert (spart Tokens).
+const RETURNED = new Map<string, ExerciseDTO[]>();
+const RETURN_CAP = 20; // pro (Kind, Fach) maximal so viele zwischenhalten
+
+// Bis zu n zurückgegebene Aufgaben herausnehmen (entfernt sie).
+export function takeReturned(userId: number, subjectId: number, n: number): ExerciseDTO[] {
+  const k = key(userId, subjectId);
+  const arr = RETURNED.get(k) ?? [];
+  const taken = arr.splice(0, n);
+  RETURNED.set(k, arr);
+  return taken;
+}
+
+// Ungenutzte Aufgaben zurücklegen (vorne anstellen → zuerst wiederverwenden).
+export function returnExercises(userId: number, subjectId: number, items: ExerciseDTO[]): void {
+  if (!items?.length) return;
+  const k = key(userId, subjectId);
+  const arr = RETURNED.get(k) ?? [];
+  RETURNED.set(k, [...items, ...arr].slice(0, RETURN_CAP));
+}
 
 const TARGET = 4; // so viele pro Fach vorhalten
 let warming = false;

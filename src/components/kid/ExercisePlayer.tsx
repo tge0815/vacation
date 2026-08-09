@@ -242,6 +242,32 @@ export function ExercisePlayer({
     };
   }, [ensureQueue]);
 
+  // Beim Verlassen der Kachel (oder Fachwechsel) den ungenutzten, bereits
+  // generierten Vorrat an den Server zurückgeben → beim nächsten Öffnen
+  // wiederverwenden statt neu zu generieren (spart Tokens). Kein fester Thema-
+  // Vorrat (der geht nicht in den gemischten Pool).
+  useEffect(() => {
+    return () => {
+      const remaining = queueRef.current;
+      queueRef.current = [];
+      if (topicId != null || remaining.length === 0) return;
+      const payload = JSON.stringify({ userId, subjectId, topicId: null, exercises: remaining });
+      try {
+        const blob = new Blob([payload], { type: "application/json" });
+        if (!navigator.sendBeacon?.("/api/exercise/return", blob)) {
+          fetch("/api/exercise/return", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: payload,
+            keepalive: true,
+          }).catch(() => {});
+        }
+      } catch {
+        // still verwerfen – kein kritischer Fehler
+      }
+    };
+  }, [userId, subjectId, topicId]);
+
   function afterGrade(durationSec: number, coinEarned = false) {
     const newSec = committedSec + durationSec;
     const newCount = committedCount + 1;
