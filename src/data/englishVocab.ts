@@ -1,7 +1,8 @@
 // Statische Schul-Vokabeln (aus dem Vokabelheft der Kinder abgetippt).
 // Werden über den Eltern-Bereich pro Kind ins Vokabelheft (Englisch) importiert
 // und dann im Vokabel-Training als Wiederholung mit eingemischt.
-// prompt = Englisch (wird gezeigt), answer = Deutsch (wird eingetippt).
+// Abgefragt wird Deutsch → Englisch: prompt = Deutsch (wird gezeigt),
+// answer = Englisch (wird eingetippt).
 
 export type VocabPair = { en: string; de: string };
 export type VocabUnit = { title: string; pairs: VocabPair[] };
@@ -116,7 +117,8 @@ export const ENGLISH_VOCAB: VocabUnit[] = [
   },
 ];
 
-// Flach als {prompt, answer}-Paare (prompt = Englisch, answer = Deutsch).
+// Flach als {prompt, answer}-Paare. Abgefragt wird Deutsch → Englisch:
+// prompt = Deutsch (gezeigt), answer = Englisch (einzutippen).
 export function englishVocabPairs(): { prompt: string; answer: string }[] {
-  return ENGLISH_VOCAB.flatMap((u) => u.pairs.map((p) => ({ prompt: p.en, answer: p.de })));
+  return ENGLISH_VOCAB.flatMap((u) => u.pairs.map((p) => ({ prompt: p.de, answer: p.en })));
 }
