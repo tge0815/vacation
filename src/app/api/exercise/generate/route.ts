@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateBatch, type GeneratedExercise } from "@/lib/ai/exercises";
-import { takeFromPool, takeReturned, warmSubject, type ExerciseDTO } from "@/lib/ai/pool";
+import { generateBatch } from "@/lib/ai/exercises";
+import { takeFromPool, warmSubject, type ExerciseDTO } from "@/lib/ai/pool";
 import { authUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
@@ -23,36 +23,34 @@ export async function POST(req: NextRequest) {
   const subjectId = body.subjectId;
   const count = body.count ?? 1;
   try {
-    // 1) Zuerst zuvor zurückgegebene (bereits generierte) Aufgaben wiederverwenden.
-    //    Bei festem Thema nicht aus dem gemischten Rückgabe-/Pool-Vorrat bedienen.
-    const reused: ExerciseDTO[] = body.topicId ? [] : takeReturned(userId, subjectId, count);
+    // 1) Aus dem persistenten Vorrat bedienen (bereits generierte Aufgaben).
+    //    Bei festem Thema nicht aus dem gemischten Vorrat nehmen.
+    const reused: ExerciseDTO[] = body.topicId ? [] : takeFromPool(userId, subjectId, count);
     const need = count - reused.length;
 
-    // 2) Rest aus dem vorgewärmten Pool, dann ggf. frisch generieren.
-    let batch: GeneratedExercise[] = [];
-    if (need > 0) {
-      batch = body.topicId ? [] : takeFromPool(userId, subjectId, need);
-      if (batch.length < need) {
-        const more = await generateBatch({
-          userId,
-          subjectId,
-          topicId: body.topicId ?? null,
-          count: need - batch.length,
-        });
-        batch = [...batch, ...more];
-      }
-    }
-    // Pool im Hintergrund wieder auffüllen.
+    // 2) Rest ggf. frisch generieren.
+    const fresh: ExerciseDTO[] =
+      need > 0
+        ? (
+            await generateBatch({
+              userId,
+              subjectId,
+              topicId: body.topicId ?? null,
+              count: need,
+            })
+          ).map(({ exercise, subject, topic, difficulty }) => ({
+            exercise,
+            subjectId: subject.id,
+            subjectKey: subject.key,
+            topicId: topic.id,
+            topicKey: topic.key,
+            topicName: topic.name,
+            difficulty,
+          }))
+        : [];
+
+    // Vorrat im Hintergrund wieder auffüllen.
     if (!body.topicId) warmSubject(userId, subjectId);
-    const fresh: ExerciseDTO[] = batch.map(({ exercise, subject, topic, difficulty }) => ({
-      exercise,
-      subjectId: subject.id,
-      subjectKey: subject.key,
-      topicId: topic.id,
-      topicKey: topic.key,
-      topicName: topic.name,
-      difficulty,
-    }));
     const exercises = [...reused, ...fresh];
     return NextResponse.json({ exercises });
   } catch (e) {

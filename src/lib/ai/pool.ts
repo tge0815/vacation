@@ -1,13 +1,12 @@
 import { generateBatch, type GeneratedExercise } from "./exercises";
 import { listSubjects, getGoal } from "../db/repo";
+import { getDb } from "../db/sqlite";
 import type { Exercise } from "./schemas";
 
-// Server-seitiger Aufgaben-Vorrat pro (Kind, Fach). Bleibt über Fach-Wechsel
-// hinweg erhalten (im Speicher des Containers). Wird beim Öffnen der Kind-Seite
-// für alle Fächer vorgewärmt, damit „Loslegen" ohne Wartezeit startet.
-
-const POOL = new Map<string, GeneratedExercise[]>();
-const key = (u: number, s: number) => `${u}:${s}`;
+// Persistenter Aufgaben-Vorrat pro (Kind, Fach) in SQLite (Tabelle
+// exercise_pool). Enthält bereits generierte, noch nicht verbrauchte Aufgaben
+// – egal ob vorgewärmt oder vom Client zurückgegeben. Übersteht Neustarts, damit
+// beim Wieder-Öffnen einer Kachel nichts unnötig neu generiert wird (spart Tokens).
 
 // Fertig aufbereitete Aufgabe, wie sie der Client bekommt/zurückgibt.
 export type ExerciseDTO = {
@@ -20,45 +19,90 @@ export type ExerciseDTO = {
   difficulty: number;
 };
 
-// Rückgabe-Speicher: Aufgaben, die der Client vorab geholt, aber beim Verlassen
-// der Kachel NICHT verbraucht hat. Werden beim nächsten Öffnen zuerst wieder
-// ausgegeben — so wird nichts umsonst generiert (spart Tokens).
-const RETURNED = new Map<string, ExerciseDTO[]>();
-const RETURN_CAP = 20; // pro (Kind, Fach) maximal so viele zwischenhalten
+const TARGET = 4; // so viele pro Fach vorwärmen
+const CAP = 24; // höchstens so viele pro (Kind, Fach) vorhalten
+const TTL_MS = 1000 * 60 * 60 * 24 * 7; // nach 7 Tagen aussortieren (nicht zu alt)
 
-// Bis zu n zurückgegebene Aufgaben herausnehmen (entfernt sie).
-export function takeReturned(userId: number, subjectId: number, n: number): ExerciseDTO[] {
-  const k = key(userId, subjectId);
-  const arr = RETURNED.get(k) ?? [];
-  const taken = arr.splice(0, n);
-  RETURNED.set(k, arr);
-  return taken;
+function toDTO(g: GeneratedExercise): ExerciseDTO {
+  return {
+    exercise: g.exercise,
+    subjectId: g.subject.id,
+    subjectKey: g.subject.key,
+    topicId: g.topic.id,
+    topicKey: g.topic.key,
+    topicName: g.topic.name,
+    difficulty: g.difficulty,
+  };
 }
-
-// Ungenutzte Aufgaben zurücklegen (vorne anstellen → zuerst wiederverwenden).
-export function returnExercises(userId: number, subjectId: number, items: ExerciseDTO[]): void {
-  if (!items?.length) return;
-  const k = key(userId, subjectId);
-  const arr = RETURNED.get(k) ?? [];
-  RETURNED.set(k, [...items, ...arr].slice(0, RETURN_CAP));
-}
-
-const TARGET = 4; // so viele pro Fach vorhalten
-let warming = false;
-const warmQueue: Array<{ userId: number; subjectId: number }> = [];
 
 export function poolSize(userId: number, subjectId: number): number {
-  return (POOL.get(key(userId, subjectId)) ?? []).length;
+  return (
+    getDb()
+      .prepare("SELECT COUNT(*) c FROM exercise_pool WHERE user_id = ? AND subject_id = ?")
+      .get(userId, subjectId) as { c: number }
+  ).c;
 }
 
-// Bis zu n Aufgaben aus dem Vorrat nehmen (entfernt sie).
-export function takeFromPool(userId: number, subjectId: number, n: number): GeneratedExercise[] {
-  const k = key(userId, subjectId);
-  const arr = POOL.get(k) ?? [];
-  const taken = arr.splice(0, n);
-  POOL.set(k, arr);
-  return taken;
+// Bis zu n Aufgaben aus dem Vorrat nehmen (älteste zuerst, entfernt sie).
+export function takeFromPool(userId: number, subjectId: number, n: number): ExerciseDTO[] {
+  if (n <= 0) return [];
+  const db = getDb();
+  const rows = db
+    .prepare(
+      "SELECT id, payload FROM exercise_pool WHERE user_id = ? AND subject_id = ? ORDER BY id LIMIT ?",
+    )
+    .all(userId, subjectId, n) as Array<{ id: number; payload: string }>;
+  if (rows.length) {
+    const del = db.prepare("DELETE FROM exercise_pool WHERE id = ?");
+    db.transaction((ids: number[]) => ids.forEach((id) => del.run(id)))(rows.map((r) => r.id));
+  }
+  const out: ExerciseDTO[] = [];
+  for (const r of rows) {
+    try {
+      out.push(JSON.parse(r.payload) as ExerciseDTO);
+    } catch {
+      // kaputtes JSON überspringen
+    }
+  }
+  return out;
 }
+
+// Aufgaben in den Vorrat legen (vorgewärmt oder zurückgegeben). Räumt dabei
+// zu alte und über die Obergrenze hinausgehende Einträge weg.
+export function addToPool(userId: number, subjectId: number, items: ExerciseDTO[]): void {
+  if (!items?.length) return;
+  const db = getDb();
+  const now = Date.now();
+  const ins = db.prepare(
+    "INSERT INTO exercise_pool (user_id, subject_id, payload, created_at) VALUES (?, ?, ?, ?)",
+  );
+  db.transaction(() => {
+    for (const it of items) ins.run(userId, subjectId, JSON.stringify(it), now);
+  })();
+  // Zu alte Einträge entfernen.
+  db.prepare("DELETE FROM exercise_pool WHERE user_id = ? AND subject_id = ? AND created_at < ?").run(
+    userId,
+    subjectId,
+    now - TTL_MS,
+  );
+  // Obergrenze wahren (älteste zuerst löschen).
+  const size = poolSize(userId, subjectId);
+  if (size > CAP) {
+    db.prepare(
+      "DELETE FROM exercise_pool WHERE id IN (SELECT id FROM exercise_pool WHERE user_id = ? AND subject_id = ? ORDER BY id LIMIT ?)",
+    ).run(userId, subjectId, size - CAP);
+  }
+}
+
+// Ungenutzte Aufgaben vom Client zurücklegen (identisch zum Auffüllen).
+export function returnExercises(userId: number, subjectId: number, items: ExerciseDTO[]): void {
+  addToPool(userId, subjectId, items);
+}
+
+// --- Vorwärmen im Hintergrund (Scheduling ist prozess-lokal) ---
+
+let warming = false;
+const warmQueue: Array<{ userId: number; subjectId: number }> = [];
 
 function enqueue(userId: number, subjectId: number) {
   if (poolSize(userId, subjectId) >= TARGET) return;
@@ -83,8 +127,7 @@ async function processWarm() {
             count: Math.min(3, need),
           });
           if (batch.length === 0) break;
-          const k = key(w.userId, w.subjectId);
-          POOL.set(k, [...(POOL.get(k) ?? []), ...batch]);
+          addToPool(w.userId, w.subjectId, batch.map(toDTO));
         } catch {
           break;
         }

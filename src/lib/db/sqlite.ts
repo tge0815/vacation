@@ -554,6 +554,24 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       }
     },
   },
+  {
+    // Persistenter Aufgaben-Vorrat pro (Kind, Fach): bereits generierte, noch
+    // nicht verbrauchte Aufgaben (als JSON). Übersteht Neustarts/Deploys, damit
+    // beim Wieder-Öffnen einer Kachel nichts neu generiert werden muss.
+    name: "022_exercise_pool",
+    run: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS exercise_pool (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          subject_id INTEGER NOT NULL,
+          payload TEXT NOT NULL,
+          created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_exercise_pool_us ON exercise_pool(user_id, subject_id, id);
+      `);
+    },
+  },
 ];
 
 // Themen-Beschreibung fürs Vokabel-Training (eigener Lernbereich). Fragt EIN
