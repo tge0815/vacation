@@ -45,6 +45,37 @@ Alternativ manuell (`.env` mit `ANTHROPIC_API_KEY` muss vorhanden sein):
 docker compose up -d --build
 ```
 
+## Deployment über GitHub Actions + GHCR (Server holt fertige Container)
+
+Statt auf dem Server selbst zu bauen, baut **GitHub Actions** das Image bei jedem
+Push auf `main` (und bei Tags `v*`, oder manuell im Actions-Tab) und pusht es in
+die **GitHub Container Registry**: `ghcr.io/tge0815/vacation:latest`
+(Workflow: `.github/workflows/docker-build.yml`, gebaut für amd64 + arm64).
+
+Auf dem Server dann nur noch **ziehen** — kein Build:
+
+```bash
+git pull            # holt compose + deploy.sh (Quellcode wird nicht gebaut)
+./deploy.sh         # .env sicherstellen, Image ziehen, starten
+```
+
+`deploy.sh` nutzt `docker-compose.prod.yml` (referenziert das GHCR-Image) und
+legt bei Bedarf `.env` an (API-Key, Session-Secret, Einladungscode).
+
+**Einmalig: Paket-Sichtbarkeit.** Nach dem ersten erfolgreichen Actions-Lauf
+erscheint das Paket unter GitHub → dein Profil → *Packages* → `vacation`.
+- **Öffentlich schalten** (einfachster Weg): Package → *Package settings* →
+  *Change visibility* → **Public**. Dann zieht der Server ohne Login.
+- **Privat lassen**: auf dem Server einmalig einloggen (PAT mit `read:packages`):
+  ```bash
+  echo <PAT> | docker login ghcr.io -u <github-user> --password-stdin
+  ```
+  (oder `GHCR_USER`/`GHCR_TOKEN` als Umgebungsvariablen setzen — `deploy.sh`
+  loggt sich dann selbst ein.)
+
+Ein bestimmtes Tag statt `latest` fahren: `LEARN_IMAGE=ghcr.io/tge0815/vacation:sha-abc1234`
+in `.env` setzen.
+
 ## Konfiguration
 
 Env-Variablen (in `docker-compose.yml`):

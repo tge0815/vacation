@@ -1,0 +1,38 @@
+# Server-Betrieb mit FERTIGEM Image aus der GitHub Container Registry.
+# Kein lokaler Build — das Image kommt aus GitHub Actions.
+#
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Bequemer: ./deploy.sh
+#
+# Anderes Tag/Registry: LEARN_IMAGE in .env setzen, z.B.
+#   LEARN_IMAGE=ghcr.io/tge0815/vacation:sha-abc1234
+services:
+  lernferien:
+    image: "${LEARN_IMAGE:-ghcr.io/tge0815/vacation:latest}"
+    container_name: lernferien
+    restart: unless-stopped
+    pull_policy: always
+    ports:
+      - "3001:3000"
+    environment:
+      # === KI (Anthropic-API über API-Key) ===
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY muss in .env gesetzt sein}"
+      LEARN_AGENT_DEFAULT_MODEL: "claude-haiku-4-5-20251001"
+      LEARN_AGENT_REASONING_MODEL: "claude-sonnet-4-6"
+      LEARN_DATA_DIR: "/data"
+
+      # === Login / Mehr-Familien ===
+      LEARN_INVITE_CODE: "${LEARN_INVITE_CODE:-bitte-aendern}"
+      LEARN_SESSION_SECRET: "${LEARN_SESSION_SECRET:-bitte-aendern}"
+      LEARN_DEFAULT_FAMILY_EMAIL: "${LEARN_DEFAULT_FAMILY_EMAIL:-eltern@local}"
+      LEARN_DEFAULT_FAMILY_PASSWORD: "${LEARN_DEFAULT_FAMILY_PASSWORD:-lernen}"
+      LEARN_COOKIE_SECURE: "${LEARN_COOKIE_SECURE:-0}"
+
+    volumes:
+      # SQLite-DB — persistiert!
+      - lernferien-data:/data
+
+volumes:
+  lernferien-data:
