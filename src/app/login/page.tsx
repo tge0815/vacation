@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GraduationCap, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { BrandMascot } from "@/components/BrandMascot";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,11 +41,14 @@ export default function LoginPage() {
   return (
     <main className="mx-auto w-full max-w-sm px-4 py-16 flex-1">
       <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 text-sky-500 mb-2">
-          <GraduationCap size={28} />
-          <span className="font-semibold tracking-tight">Ferien-Lerncoach</span>
+        <BrandMascot size={168} className="mx-auto drop-shadow-sm" />
+        <div className="mt-1 inline-flex items-center gap-2">
+          <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-orange-500 via-sky-500 to-violet-500 bg-clip-text text-transparent">
+            Ferien-Lerncoach
+          </span>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Anmelden</h1>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">Anmelden</h1>
+        <p className="text-sm text-neutral-500 mt-1">Bereit zum Üben? Los geht&apos;s! 🚀</p>
       </div>
 
       <form
