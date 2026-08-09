@@ -38,13 +38,19 @@ export function ParentArea() {
   }, []);
 
   // Anzahl offener Belohnungs-Anfragen (Badge am Tab). Aktualisiert beim
-  // Tab-Wechsel, damit die Zahl nach dem Bearbeiten stimmt.
+  // Tab-Wechsel UND regelmäßig, damit neue Anfragen von selbst auftauchen.
   useEffect(() => {
     if (locked) return;
-    fetch("/api/rewards/requests?status=pending")
-      .then((r) => r.json())
-      .then((d: { requests?: PublicRewardRequest[] }) => setPendingRewards(d.requests?.length ?? 0))
-      .catch(() => {});
+    const refresh = () =>
+      fetch("/api/rewards/requests?status=pending")
+        .then((r) => r.json())
+        .then((d: { requests?: PublicRewardRequest[] }) =>
+          setPendingRewards(d.requests?.length ?? 0),
+        )
+        .catch(() => {});
+    refresh();
+    const t = setInterval(refresh, 15000);
+    return () => clearInterval(t);
   }, [locked, tab]);
 
   async function verify(pin: string) {

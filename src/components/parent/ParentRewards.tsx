@@ -22,6 +22,17 @@ export function ParentRewards() {
 
   useEffect(() => {
     load().catch(() => setRequests([]));
+    // Automatisch nachladen, damit neue Anfragen der Kinder von selbst
+    // auftauchen (ohne Seiten-Neuladen).
+    const t = setInterval(() => {
+      load().catch(() => {});
+    }, 12000);
+    const onFocus = () => load().catch(() => {});
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [load]);
 
   async function decide(id: number, action: "approve" | "decline") {

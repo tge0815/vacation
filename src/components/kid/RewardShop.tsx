@@ -26,6 +26,11 @@ export function RewardShop({ userId }: { userId: number }) {
 
   useEffect(() => {
     load().catch(() => setPackages([]));
+    // Nachladen, damit eine Bestätigung/Ablehnung der Eltern von selbst erscheint.
+    const t = setInterval(() => {
+      load().catch(() => {});
+    }, 15000);
+    return () => clearInterval(t);
   }, [load]);
 
   async function request(pkg: PublicRewardPackage) {
