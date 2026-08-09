@@ -18,7 +18,13 @@ Stack: Next.js 16 · TypeScript · Tailwind CSS 4 · better-sqlite3 · `@anthrop
 - **Fächer & Themen**
   - Deutsch: Zeiten, Lückentext, Rechtschreibung, **Vorlesen**
   - Mathe: Bruchrechnen, Maßstab, Textaufgaben
-  - Englisch: Vokabeln, Grammatik
+  - Englisch: Grammatik
+  - **Vokabeln** (eigener Lernbereich): abgefragt in beide Richtungen
+    (Deutsch↔Englisch), neue Wörter per **Foto** vom Vokabelheft einlesen
+    (die KI erkennt die Paare), plus optionale KI-Ergänzung.
+  - Erdkunde: Hauptstädte, Flaggen, Länder & Kontinente, Landkarte
+- **Installierbar (PWA)**: über „Zum Startbildschirm hinzufügen" wie eine App
+  nutzbar (eigenes Icon, Vollbild, Offline-Fallback für besuchte Seiten).
 - **Zeitmodell**: Minuten pro Kind & Fach + sichtbares Tagesziel gesamt.
 - **Adaptive Schwierigkeit**: passt sich an die letzten Ergebnisse an.
 - **Belohnung**: Fortschrittsringe, Serien-Zähler (Streak), Konfetti beim Tagesziel.

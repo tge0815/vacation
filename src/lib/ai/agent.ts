@@ -6,7 +6,7 @@ export type AgentChunk =
   | { kind: "error"; message: string };
 
 let client: Anthropic | null = null;
-function getClient(): Anthropic {
+export function getClient(): Anthropic {
   if (!client) {
     // Liest ANTHROPIC_API_KEY aus der Umgebung (docker-compose / .env).
     if (!process.env.ANTHROPIC_API_KEY) {

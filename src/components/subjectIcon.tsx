@@ -1,4 +1,4 @@
-import { BookText, Calculator, Languages, BookOpen, Globe, type LucideIcon } from "lucide-react";
+import { BookText, Calculator, Languages, BookOpen, Globe, BookA, type LucideIcon } from "lucide-react";
 
 const ICONS: Record<string, LucideIcon> = {
   BookText,
@@ -6,6 +6,7 @@ const ICONS: Record<string, LucideIcon> = {
   Languages,
   BookOpen,
   Globe,
+  BookA,
 };
 
 export function subjectIcon(name: string): LucideIcon {

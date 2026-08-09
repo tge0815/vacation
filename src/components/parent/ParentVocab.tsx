@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, Check, X, BookPlus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Check, X, BookPlus, Camera } from "lucide-react";
 import { color } from "@/components/colors";
 import type { PublicUser } from "@/lib/serialize";
 
@@ -21,6 +21,9 @@ export function ParentVocab() {
   const [data, setData] = useState<{ forUser: number; vocab: Vocab[] } | null>(null);
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoMsg, setPhotoMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   function loadVocab(uid: number) {
     fetch(`/api/vocab?userId=${uid}`)
@@ -46,6 +49,41 @@ export function ParentVocab() {
       })
       .catch(() => setImportMsg("Import fehlgeschlagen."))
       .finally(() => setImporting(false));
+  }
+
+  function onPhotoPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // gleiches Foto erneut wählbar machen
+    if (!file || !userId) return;
+    setPhotoBusy(true);
+    setPhotoMsg("Foto wird gelesen …");
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = String(reader.result ?? "");
+      fetch("/api/vocab/photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, image }),
+      })
+        .then((r) => r.json())
+        .then((d: { added?: number; skipped?: number; total?: number; error?: string }) => {
+          if (d.error) setPhotoMsg(d.error);
+          else if ((d.total ?? 0) === 0)
+            setPhotoMsg("Keine Vokabeln im Foto erkannt. Schärferes Foto probieren.");
+          else
+            setPhotoMsg(
+              `${d.added} neu, ${d.skipped} schon vorhanden (${d.total} im Foto erkannt).`,
+            );
+          loadVocab(userId);
+        })
+        .catch(() => setPhotoMsg("Foto-Import fehlgeschlagen."))
+        .finally(() => setPhotoBusy(false));
+    };
+    reader.onerror = () => {
+      setPhotoMsg("Foto konnte nicht gelesen werden.");
+      setPhotoBusy(false);
+    };
+    reader.readAsDataURL(file);
   }
 
   useEffect(() => {
@@ -75,6 +113,7 @@ export function ParentVocab() {
             key={u.id}
             onClick={() => {
               setImportMsg(null);
+              setPhotoMsg(null);
               setUserId(u.id);
             }}
             className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium ${
@@ -87,9 +126,30 @@ export function ParentVocab() {
       </div>
 
       <p className="text-xs text-neutral-500">
-        Abgefragte Vokabeln. Falsche kommen automatisch wieder dran, bis sie sitzen — Status wird nach
-        mehrmals richtig zu „gelernt“.
+        Vokabeln des Kindes (eigener Lernbereich „Vokabeln“). Falsche kommen automatisch wieder dran,
+        bis sie sitzen — nach mehrmals richtig wird der Status zu „gelernt“. Neue Wörter einfach als
+        Foto vom Vokabelheft einlesen; abgefragt wird in beide Richtungen (Deutsch↔Englisch).
       </p>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={photoBusy}
+          className="inline-flex items-center gap-2 rounded-xl bg-violet-500 text-white text-sm font-semibold px-4 py-2 disabled:opacity-40 hover:opacity-90"
+        >
+          {photoBusy ? <Loader2 className="animate-spin" size={16} /> : <Camera size={16} />}
+          Vokabeln aus Foto einlesen
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={onPhotoPicked}
+          className="hidden"
+        />
+        {photoMsg && <span className="text-xs text-neutral-500">{photoMsg}</span>}
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -98,7 +158,7 @@ export function ParentVocab() {
           className="inline-flex items-center gap-2 rounded-xl bg-sky-500 text-white text-sm font-semibold px-4 py-2 disabled:opacity-40 hover:opacity-90"
         >
           {importing ? <Loader2 className="animate-spin" size={16} /> : <BookPlus size={16} />}
-          Schul-Vokabeln (Englisch) importieren
+          Beispiel-Vokabeln importieren
         </button>
         {importMsg && <span className="text-xs text-neutral-500">{importMsg}</span>}
       </div>
@@ -109,7 +169,8 @@ export function ParentVocab() {
         </div>
       ) : vocab.length === 0 ? (
         <p className="text-neutral-500 text-center py-8">
-          Noch keine Vokabeln geübt. Sobald das Kind Englisch-Vokabeln macht, erscheinen sie hier.
+          Noch keine Vokabeln. Lies welche per Foto ein oder importiere die Beispiel-Vokabeln — dann
+          erscheinen sie hier.
         </p>
       ) : (
         <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] divide-y divide-black/[0.05] dark:divide-white/[0.05]">

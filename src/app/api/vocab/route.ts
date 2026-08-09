@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
   const body = (await req.json()) as { userId?: number };
   const gate = await authUser(req, Number(body.userId));
   if (gate instanceof NextResponse) return gate;
-  const englisch = listSubjects(true).find((s) => s.key === "englisch");
-  if (!englisch) return NextResponse.json({ error: "Fach Englisch nicht gefunden" }, { status: 404 });
-  const res = importVocab(Number(body.userId), englisch.id, englishVocabPairs());
+  const vok = listSubjects(true).find((s) => s.key === "vokabeln");
+  if (!vok) return NextResponse.json({ error: "Lernbereich Vokabeln nicht gefunden" }, { status: 404 });
+  const res = importVocab(Number(body.userId), vok.id, englishVocabPairs());
   return NextResponse.json({ ...res, total: englishVocabPairs().length });
 }

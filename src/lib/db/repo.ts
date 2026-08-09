@@ -116,6 +116,11 @@ export function seedDefaultGoals(userId: number): void {
       | undefined;
     if (s) setGoal(userId, s.id, 10, "minutes");
   }
+  // Vokabeln als eigener Lernbereich: 10 Vokabeln pro Tag (Aufgaben-Ziel).
+  const vok = db.prepare("SELECT id FROM subjects WHERE key = 'vokabeln'").get() as
+    | { id: number }
+    | undefined;
+  if (vok) setGoal(userId, vok.id, 10, "count");
 }
 
 export function updateUser(

@@ -427,7 +427,77 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       );
     `,
   },
+  {
+    // Vokabeln werden ein EIGENER Lernbereich (Fach), getrennt von den
+    // Englisch-Aufgaben. Bestehendes vokabeln-Thema + alle vocab-Zeilen wandern
+    // von Englisch ins neue Fach; jedes Kind bekommt ein Standard-Tagesziel.
+    // Idempotent: Frisch-Installationen haben das Fach schon aus dem Seed (002).
+    name: "019_vokabeln_subject",
+    run: (db) => {
+      const idByKey = (key: string): number | undefined =>
+        (db.prepare("SELECT id FROM subjects WHERE key = ?").get(key) as { id: number } | undefined)
+          ?.id;
+
+      const englischId = idByKey("englisch");
+      let vokId = idByKey("vokabeln");
+      if (!vokId) {
+        const info = db
+          .prepare(
+            "INSERT INTO subjects (key, name, color, icon, sort, active) VALUES ('vokabeln','Vokabeln','violet','BookA',3,1)",
+          )
+          .run();
+        vokId = Number(info.lastInsertRowid);
+        // Erdkunde hinter die Vokabeln schieben (nur Sortierung).
+        db.prepare("UPDATE subjects SET sort = 4 WHERE key = 'geografie'").run();
+      }
+
+      // vokabeln-Thema von Englisch ins neue Fach umhängen (erhält topic_id +
+      // Attempt-Historie). Falls das Zielfach schon eins hat: das aus Englisch
+      // entfernen, um die UNIQUE(subject_id,key) nicht zu verletzen.
+      if (englischId) {
+        const engTopic = db
+          .prepare("SELECT id FROM topics WHERE subject_id = ? AND key = 'vokabeln'")
+          .get(englischId) as { id: number } | undefined;
+        if (engTopic) {
+          const already = db
+            .prepare("SELECT id FROM topics WHERE subject_id = ? AND key = 'vokabeln'")
+            .get(vokId) as { id: number } | undefined;
+          if (already) {
+            db.prepare("DELETE FROM topics WHERE id = ?").run(engTopic.id);
+          } else {
+            db.prepare(
+              "UPDATE topics SET subject_id = ?, sort = 0, description = ? WHERE id = ?",
+            ).run(vokId, VOCAB_TOPIC_DESC, engTopic.id);
+          }
+        }
+        // Vokabelheft-Einträge ins neue Fach übernehmen.
+        db.prepare("UPDATE vocab SET subject_id = ? WHERE subject_id = ?").run(vokId, englischId);
+      }
+
+      // Sicherstellen, dass das neue Fach ein vokabeln-Thema hat.
+      const hasTopic = db
+        .prepare("SELECT id FROM topics WHERE subject_id = ? AND key = 'vokabeln'")
+        .get(vokId) as { id: number } | undefined;
+      if (!hasTopic) {
+        db.prepare(
+          "INSERT INTO topics (subject_id, key, name, description, input_hint, sort, active) VALUES (?, 'vokabeln', 'Vokabeln', ?, NULL, 0, 1)",
+        ).run(vokId, VOCAB_TOPIC_DESC);
+      }
+
+      // Standard-Tagesziel (10 Vokabeln/Tag) für bestehende Kinder.
+      const users = db.prepare("SELECT id FROM users").all() as Array<{ id: number }>;
+      const insGoal = db.prepare(
+        "INSERT OR IGNORE INTO goals (user_id, subject_id, daily_minutes, goal_type, level) VALUES (?, ?, 10, 'count', 0)",
+      );
+      for (const u of users) insGoal.run(u.id, vokId);
+    },
+  },
 ];
+
+// Themen-Beschreibung fürs Vokabel-Training (eigener Lernbereich). Fragt EIN
+// Wort/eine kurze Wendung ab, Richtung wechselt (Deutsch↔Englisch).
+const VOCAB_TOPIC_DESC =
+  "Wörter zwischen Deutsch und Englisch übersetzen. Frage GENAU EIN einzelnes Wort oder eine kurze Wendung ab (kein ganzer Satz), mal Deutsch→Englisch, mal Englisch→Deutsch. inputMode 'text', die Lösung ist kurz und eindeutig. Alltagsnaher Grundwortschatz der 5. Klasse.";
 
 const GEOGRAFIE_TOPICS: Array<{
   key: string;
@@ -543,14 +613,25 @@ const SUBJECT_SEEDS: SubjectSeed[] = [
     icon: "Languages",
     topics: [
       {
-        key: "vokabeln",
-        name: "Vokabeln",
-        description: "Wörter zwischen Deutsch und Englisch übersetzen.",
-      },
-      {
         key: "grammatik",
         name: "Grammatik",
         description: "Simple Present, Simple Past, Artikel, Plural, Fragen.",
+      },
+    ],
+  },
+  {
+    // Eigener Lernbereich Vokabeln (getrennt von den Englisch-Aufgaben).
+    // Fragt die eingegebenen/importierten Wörter ab (beide Richtungen) und
+    // lässt die KI passende neue Vokabeln ergänzen.
+    key: "vokabeln",
+    name: "Vokabeln",
+    color: "violet",
+    icon: "BookA",
+    topics: [
+      {
+        key: "vokabeln",
+        name: "Vokabeln",
+        description: VOCAB_TOPIC_DESC,
       },
     ],
   },

@@ -1,0 +1,17 @@
+{
+  "name": "Ferien-Lerncoach",
+  "short_name": "Lerncoach",
+  "description": "Täglich ein paar Minuten üben — Deutsch, Mathe, Englisch, Vokabeln & Erdkunde.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fafafa",
+  "theme_color": "#0ea5e9",
+  "lang": "de",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
