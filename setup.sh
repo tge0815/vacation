@@ -102,6 +102,8 @@ else
   log "API-Key vorhanden (.env)"
 fi
 
+PORT_HOST="$(grep '^LEARN_PORT=' .env 2>/dev/null | cut -d= -f2- || true)"; PORT_HOST="${PORT_HOST:-3001}"
+
 # ──── 5. Build + Start ────────────────────────────────────────────────
 step "Container bauen + starten"
 docker compose up -d --build
@@ -110,7 +112,7 @@ docker compose up -d --build
 step "Warte bis App antwortet (max. 60 s)"
 READY=0
 for i in $(seq 1 60); do
-  if curl -fs http://localhost:3001/login >/dev/null 2>&1; then
+  if curl -fs http://localhost:${PORT_HOST}/login >/dev/null 2>&1; then
     log "App erreichbar nach ${i} s"
     READY=1
     break
@@ -129,7 +131,7 @@ fi
 step "KI-Erreichbarkeit prüfen (Anthropic-API)"
 AI_OK=0
 for i in 1 2 3; do
-  RESP=$(curl -fs --max-time 50 http://localhost:3001/api/health 2>/dev/null || echo "")
+  RESP=$(curl -fs --max-time 50 http://localhost:${PORT_HOST}/api/health 2>/dev/null || echo "")
   if echo "$RESP" | grep -q '"ok":true'; then
     AI_OK=1
     break
@@ -153,8 +155,8 @@ echo
 HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "")
 printf "${G}✓ Fertig.${N}\n\n"
 echo "Ferien-Lerncoach:"
-echo "   http://localhost:3001"
-[ -n "$HOST_IP" ] && echo "   http://${HOST_IP}:3001"
+echo "   http://localhost:${PORT_HOST}"
+[ -n "$HOST_IP" ] && echo "   http://${HOST_IP}:${PORT_HOST} (nur wenn LEARN_BIND=0.0.0.0)"
 echo
 echo "Backend: Anthropic-API (API-Key, Pay-per-Token)"
 echo

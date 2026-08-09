@@ -18,6 +18,7 @@ err()  { printf "${R}✗${N} %s\n" "$*" >&2; }
 step() { printf "\n${B}■${N} ${B}%s${N}\n" "$*"; }
 
 COMPOSE="docker compose -f docker-compose.prod.yml"
+port_host() { local p; p="$(grep '^LEARN_PORT=' .env 2>/dev/null | cut -d= -f2- || true)"; echo "${p:-3001}"; }
 
 # ──── Prereqs ─────────────────────────────────────────────────────────
 command -v docker >/dev/null || { err "Docker fehlt."; exit 1; }
@@ -46,6 +47,8 @@ else
   log "API-Key vorhanden (.env)"
 fi
 
+PORT_HOST="$(port_host)"
+
 # ──── Optionaler GHCR-Login (privates Paket) ──────────────────────────
 if [ -n "${GHCR_USER:-}" ] && [ -n "${GHCR_TOKEN:-}" ]; then
   step "GHCR-Login"
@@ -68,13 +71,13 @@ docker image prune -f >/dev/null 2>&1 || true
 # ──── Warten + Status ─────────────────────────────────────────────────
 step "Warte bis App antwortet (max. 60 s)"
 for i in $(seq 1 60); do
-  curl -fs http://localhost:3001/login >/dev/null 2>&1 && { log "App erreichbar nach ${i} s"; break; }
+  curl -fs http://localhost:${PORT_HOST}/login >/dev/null 2>&1 && { log "App erreichbar nach ${i} s"; break; }
   printf "."; sleep 1
 done
 echo
-RESP=$(curl -fs --max-time 50 http://localhost:3001/api/health 2>/dev/null || echo "")
+RESP=$(curl -fs --max-time 50 http://localhost:${PORT_HOST}/api/health 2>/dev/null || echo "")
 echo "$RESP" | grep -q '"ok":true' && log "KI erreichbar (API-Key gültig)" || warn "KI-Check: $RESP"
 
 echo
 $COMPOSE ps
-printf "\n${G}✓ Deploy fertig.${N}  http://localhost:3001\n"
+printf "\n${G}✓ Deploy fertig.${N}  http://localhost:${PORT_HOST}\n"

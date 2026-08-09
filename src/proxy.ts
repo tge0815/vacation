@@ -14,10 +14,19 @@ export async function proxy(req: NextRequest) {
 
   const familyId = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
 
+  // Redirect-Ziele aus nextUrl ableiten (behält Host/Domain hinter einem
+  // Reverse-Proxy wie Apache; kein Sprung auf 127.0.0.1).
+  const to = (path: string) => {
+    const url = req.nextUrl.clone();
+    url.pathname = path;
+    url.search = "";
+    return url;
+  };
+
   if (isPublic) {
     // Bereits angemeldet? Login/Register überspringen → zur Startseite.
     if (familyId && !isApi) {
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(to("/"));
     }
     return NextResponse.next();
   }
@@ -26,8 +35,7 @@ export async function proxy(req: NextRequest) {
     if (isApi) {
       return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
     }
-    const url = new URL("/login", req.url);
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(to("/login"));
   }
 
   return NextResponse.next();

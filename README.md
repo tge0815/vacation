@@ -76,6 +76,37 @@ erscheint das Paket unter GitHub → dein Profil → *Packages* → `vacation`.
 Ein bestimmtes Tag statt `latest` fahren: `LEARN_IMAGE=ghcr.io/tge0815/vacation:sha-abc1234`
 in `.env` setzen.
 
+## Hinter Apache (Reverse-Proxy, eigene Domain)
+
+Läuft auf dem Server schon ein Apache mit vHosts, wird der Container **nur an
+localhost** gebunden und Apache stellt ihn unter der Domain per HTTPS bereit.
+
+1. In `.env` setzen:
+   ```
+   LEARN_PORT=3001          # freier lokaler Port (Default 3001)
+   LEARN_BIND=127.0.0.1     # nur lokal erreichbar (Default) — nur Apache kommt ran
+   LEARN_COOKIE_SECURE=1    # da über HTTPS ausgeliefert
+   ```
+   Dann `./deploy.sh` (bzw. `docker compose -f docker-compose.prod.yml up -d`).
+   Der Container hört jetzt auf `127.0.0.1:3001` und ist von außen **nicht**
+   direkt erreichbar.
+
+2. Apache-vHost einrichten — fertige Vorlage: **`deploy/apache/lernen.my-corner.de.conf`**.
+   Kurz:
+   ```bash
+   sudo a2enmod proxy proxy_http headers ssl rewrite
+   sudo cp deploy/apache/lernen.my-corner.de.conf /etc/apache2/sites-available/
+   sudo a2ensite lernen.my-corner.de
+   sudo certbot --apache -d lernen.my-corner.de   # HTTPS-Zertifikat
+   sudo systemctl reload apache2
+   ```
+   Die Vorlage leitet HTTP→HTTPS um, reicht `Host` + `X-Forwarded-Proto: https`
+   an die App durch und setzt `ProxyTimeout 300` (für den langlebigen
+   Coach-Chat/SSE).
+
+Danach: <https://lernen.my-corner.de> — Mikrofon (Vorlesen) funktioniert jetzt
+auch, weil HTTPS ein Secure Context ist.
+
 ## Konfiguration
 
 Env-Variablen (in `docker-compose.yml`):

@@ -5,7 +5,9 @@ services:
     container_name: lernferien
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      # Nur an localhost gebunden — erreichbar über den Reverse-Proxy (Apache),
+      # nicht direkt von außen. Für direkten LAN-Zugriff: LEARN_BIND=0.0.0.0.
+      - "${LEARN_BIND:-127.0.0.1}:${LEARN_PORT:-3001}:3000"
     environment:
       # === KI (Anthropic-API über API-Key) ===
       # API-Key aus der .env (siehe .env.example). Pay-per-Token, sehr günstig.

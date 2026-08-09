@@ -15,7 +15,9 @@ services:
     restart: unless-stopped
     pull_policy: always
     ports:
-      - "3001:3000"
+      # Nur an localhost gebunden — erreichbar über den Reverse-Proxy (Apache),
+      # nicht direkt von außen. Für direkten LAN-Zugriff: LEARN_BIND=0.0.0.0.
+      - "${LEARN_BIND:-127.0.0.1}:${LEARN_PORT:-3001}:3000"
     environment:
       # === KI (Anthropic-API über API-Key) ===
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY muss in .env gesetzt sein}"
