@@ -134,12 +134,16 @@ export async function generateBatch(opts: {
   items.forEach((it, idx) => {
     if (reviews.has(idx)) {
       const v = reviews.get(idx)!;
+      // Abfragerichtung wechselt pro Wort und Durchgang (mal Deutsch→Englisch,
+      // mal Englisch→Deutsch). Deterministisch aus id+seen, damit es sich mit
+      // jeder Wiederholung dreht — ohne Zufall (React-Compiler-Reinheit).
+      const swap = (v.id + v.seen) % 2 === 1;
       out.push({
         exercise: {
           inputMode: "text",
           instruction: "Wiederholung 🔁",
-          question: v.prompt,
-          solution: v.answer,
+          question: swap ? v.answer : v.prompt,
+          solution: swap ? v.prompt : v.answer,
           acceptable: [],
           difficulty: it.difficulty,
         },

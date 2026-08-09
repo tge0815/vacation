@@ -1,8 +1,9 @@
 // Statische Schul-Vokabeln (aus dem Vokabelheft der Kinder abgetippt).
 // Werden über den Eltern-Bereich pro Kind ins Vokabelheft (Englisch) importiert
 // und dann im Vokabel-Training als Wiederholung mit eingemischt.
-// Abgefragt wird Deutsch → Englisch: prompt = Deutsch (wird gezeigt),
-// answer = Englisch (wird eingetippt).
+// Die Abfragerichtung ist NICHT fest: Das Training fragt mal Deutsch→Englisch,
+// mal Englisch→Deutsch. Dubletten werden richtungsunabhängig erkannt (dieselbe
+// Vokabel wird nie doppelt angelegt, egal in welcher Reihenfolge sie kommt).
 
 export type VocabPair = { en: string; de: string };
 export type VocabUnit = { title: string; pairs: VocabPair[] };

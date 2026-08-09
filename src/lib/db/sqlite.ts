@@ -294,6 +294,74 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       );
     `,
   },
+  {
+    // Vokabeln richtungsunabhängig machen: Deutsch↔Englisch ist EINE Vokabel.
+    // Der norm-Schlüssel wird sortiert (a|b statt prompt|answer), damit dieselbe
+    // Vokabel in beiden Richtungen als Dublette erkannt wird. Bereits vorhandene
+    // Einträge werden zusammengeführt (Statistik summiert, höchste Box gewinnt).
+    name: "015_vocab_dir_agnostic",
+    run: (db) => {
+      const rows = db.prepare("SELECT * FROM vocab").all() as Array<{
+        user_id: number;
+        subject_id: number;
+        prompt: string;
+        answer: string;
+        norm: string;
+        seen: number;
+        correct: number;
+        wrong: number;
+        box: number;
+        last_seen: number | null;
+        created_at: number;
+      }>;
+      const canon = (norm: string): string => {
+        const i = norm.indexOf("|");
+        if (i < 0) return norm;
+        const a = norm.slice(0, i);
+        const b = norm.slice(i + 1);
+        return a <= b ? `${a}|${b}` : `${b}|${a}`;
+      };
+      const groups = new Map<string, (typeof rows)[number]>();
+      for (const r of rows) {
+        const cn = canon(r.norm);
+        const key = `${r.user_id}::${cn}`;
+        const g = groups.get(key);
+        if (!g) {
+          groups.set(key, { ...r, norm: cn });
+        } else {
+          g.seen += r.seen;
+          g.correct += r.correct;
+          g.wrong += r.wrong;
+          g.box = Math.max(g.box, r.box);
+          g.last_seen = Math.max(g.last_seen ?? 0, r.last_seen ?? 0) || null;
+          g.created_at = Math.min(g.created_at, r.created_at);
+        }
+      }
+      const ins = db.prepare(
+        `INSERT INTO vocab (user_id, subject_id, prompt, answer, norm, seen, correct, wrong, box, last_seen, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      const tx = db.transaction(() => {
+        db.exec("DELETE FROM vocab");
+        for (const g of groups.values()) {
+          ins.run(
+            g.user_id,
+            g.subject_id,
+            g.prompt,
+            g.answer,
+            g.norm,
+            g.seen,
+            g.correct,
+            g.wrong,
+            g.box,
+            g.last_seen ?? null,
+            g.created_at,
+          );
+        }
+      });
+      tx();
+    },
+  },
 ];
 
 const GEOGRAFIE_TOPICS: Array<{

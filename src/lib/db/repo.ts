@@ -446,6 +446,15 @@ function vocabKey(s: string): string {
     .replace(/[.!?,;:"']/g, "");
 }
 
+// Richtungsunabhängiger Schlüssel für ein Wortpaar: Deutsch↔Englisch ergibt
+// denselben norm-Wert, egal welche Seite Frage/Antwort ist. So wird dieselbe
+// Vokabel nie doppelt angelegt.
+function pairNorm(a: string, b: string): string {
+  const ka = vocabKey(a);
+  const kb = vocabKey(b);
+  return ka <= kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+}
+
 // Erfasst eine abgefragte Vokabel (Upsert) und aktualisiert die Leitner-Box:
 // richtig → Box hoch (max 5), falsch → zurück auf Box 1 (kommt bald wieder).
 export function recordVocab(
@@ -456,7 +465,7 @@ export function recordVocab(
   isCorrect: boolean,
 ): void {
   const db = getDb();
-  const norm = `${vocabKey(prompt)}|${vocabKey(answer)}`;
+  const norm = pairNorm(prompt, answer);
   const now = Date.now();
   const row = db
     .prepare("SELECT id, box FROM vocab WHERE user_id = ? AND norm = ?")
@@ -509,7 +518,7 @@ export function importVocab(
   let added = 0;
   const run = db.transaction((rows: { prompt: string; answer: string }[]) => {
     for (const p of rows) {
-      const norm = `${vocabKey(p.prompt)}|${vocabKey(p.answer)}`;
+      const norm = pairNorm(p.prompt, p.answer);
       const res = insert.run(userId, subjectId, p.prompt, p.answer, norm, now);
       if (res.changes > 0) added++;
     }
