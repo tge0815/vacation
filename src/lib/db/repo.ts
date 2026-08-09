@@ -72,13 +72,37 @@ export function getUserInFamily(id: number, familyId: number): UserRow | null {
   return u && u.family_id === familyId ? u : null;
 }
 
+export function normalizeUsername(u: string): string {
+  return u.trim().toLowerCase();
+}
+
+export function getUserByUsername(username: string): UserRow | null {
+  const u = normalizeUsername(username);
+  if (!u) return null;
+  return (getDb().prepare("SELECT * FROM users WHERE username = ?").get(u) as UserRow) ?? null;
+}
+
+// true, wenn der Benutzername schon (bei einem ANDEREN Kind) vergeben ist.
+export function usernameTaken(username: string, exceptUserId?: number): boolean {
+  const existing = getUserByUsername(username);
+  return Boolean(existing && existing.id !== exceptUserId);
+}
+
+// Kind-Login: gibt das Kind zurück, wenn Benutzername + Passwort stimmen.
+export function verifyChildLogin(username: string, password: string): UserRow | null {
+  const u = getUserByUsername(username);
+  if (!u || !u.password_hash) return null;
+  return verifyPassword(password, u.password_hash) ? u : null;
+}
+
 export function createUser(u: {
   familyId: number;
   name: string;
   color?: string;
   emoji?: string;
-  pin?: string | null;
   grade?: number;
+  username?: string | null;
+  password?: string | null;
 }): UserRow {
   const db = getDb();
   const maxSort =
@@ -89,14 +113,15 @@ export function createUser(u: {
     ).m ?? 0;
   const info = db
     .prepare(
-      "INSERT INTO users (family_id, name, color, emoji, pin_hash, grade, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO users (family_id, name, color, emoji, pin_hash, username, password_hash, grade, sort, created_at) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)",
     )
     .run(
       u.familyId,
       u.name,
       u.color ?? "sky",
       u.emoji ?? "🙂",
-      u.pin ? hashPin(u.pin) : null,
+      u.username ? normalizeUsername(u.username) : null,
+      u.password ? hashPassword(u.password) : null,
       u.grade ?? 5,
       maxSort + 1,
       Date.now(),
@@ -125,7 +150,14 @@ export function seedDefaultGoals(userId: number): void {
 
 export function updateUser(
   id: number,
-  fields: { name?: string; color?: string; emoji?: string; grade?: number; pin?: string | null },
+  fields: {
+    name?: string;
+    color?: string;
+    emoji?: string;
+    grade?: number;
+    username?: string | null;
+    password?: string | null;
+  },
 ): UserRow | null {
   const sets: string[] = [];
   const vals: unknown[] = [];
@@ -145,9 +177,14 @@ export function updateUser(
     sets.push("grade = ?");
     vals.push(fields.grade);
   }
-  if (fields.pin !== undefined) {
-    sets.push("pin_hash = ?");
-    vals.push(fields.pin ? hashPin(fields.pin) : null);
+  if (fields.username !== undefined) {
+    sets.push("username = ?");
+    vals.push(fields.username ? normalizeUsername(fields.username) : null);
+  }
+  // Passwort nur ändern, wenn ein nicht-leerer Wert kommt (null = entfernen).
+  if (fields.password !== undefined) {
+    sets.push("password_hash = ?");
+    vals.push(fields.password ? hashPassword(fields.password) : null);
   }
   if (sets.length === 0) return getUser(id);
   vals.push(id);

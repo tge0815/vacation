@@ -12,30 +12,47 @@ export async function proxy(req: NextRequest) {
     ? PUBLIC_API.includes(pathname)
     : PUBLIC_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
-  const familyId = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
 
-  // Redirect-Ziele aus nextUrl ableiten (behält Host/Domain hinter einem
-  // Reverse-Proxy wie Apache; kein Sprung auf 127.0.0.1).
+  // Redirect-Ziele aus nextUrl ableiten (behält Host/Domain hinter Apache).
   const to = (path: string) => {
     const url = req.nextUrl.clone();
     url.pathname = path;
     url.search = "";
     return url;
   };
+  // Startseite je nach Rolle: Kind direkt in seinen Bereich, Eltern zur Auswahl.
+  const homeFor = (s: NonNullable<typeof session>) =>
+    s.role === "child" ? `/kind/${s.userId}` : "/";
 
   if (isPublic) {
-    // Bereits angemeldet? Login/Register überspringen → zur Startseite.
-    if (familyId && !isApi) {
-      return NextResponse.redirect(to("/"));
+    // Bereits angemeldet? Login/Register überspringen → zur passenden Startseite.
+    if (session && !isApi) {
+      return NextResponse.redirect(to(homeFor(session)));
     }
     return NextResponse.next();
   }
 
-  if (!familyId) {
+  if (!session) {
     if (isApi) {
       return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
     }
     return NextResponse.redirect(to("/login"));
+  }
+
+  // Kind-Login: nur der eigene Kind-Bereich ist erreichbar (Seiten). Die
+  // API-Endpunkte setzen die Feinabsicherung pro userId/Rolle selbst durch.
+  if (session.role === "child" && !isApi) {
+    const home = `/kind/${session.userId}`;
+    if (pathname === "/" || pathname.startsWith("/eltern")) {
+      return NextResponse.redirect(to(home));
+    }
+    if (pathname.startsWith("/kind/")) {
+      const seg = pathname.split("/")[2];
+      if (seg && seg !== String(session.userId)) {
+        return NextResponse.redirect(to(home));
+      }
+    }
   }
 
   return NextResponse.next();

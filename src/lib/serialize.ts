@@ -6,7 +6,8 @@ export type PublicUser = {
   color: string;
   emoji: string;
   grade: number;
-  hasPin: boolean;
+  username: string | null;
+  hasLogin: boolean;
   coins: number;
 };
 
@@ -17,7 +18,8 @@ export function publicUser(u: UserRow): PublicUser {
     color: u.color,
     emoji: u.emoji,
     grade: u.grade,
-    hasPin: Boolean(u.pin_hash),
+    username: u.username ?? null,
+    hasLogin: Boolean(u.username && u.password_hash),
     coins: u.coins ?? 0,
   };
 }

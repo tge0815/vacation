@@ -3,15 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GraduationCap, Settings, Loader2, LogOut } from "lucide-react";
-import { PinPad } from "@/components/PinPad";
 import { color } from "@/components/colors";
 import type { PublicUser } from "@/lib/serialize";
 
 export default function Home() {
   const router = useRouter();
   const [users, setUsers] = useState<PublicUser[] | null>(null);
-  const [pinFor, setPinFor] = useState<PublicUser | null>(null);
-  const [pinError, setPinError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/users")
@@ -21,24 +18,7 @@ export default function Home() {
   }, []);
 
   function pick(u: PublicUser) {
-    if (u.hasPin) {
-      setPinError(null);
-      setPinFor(u);
-    } else {
-      router.push(`/kind/${u.id}`);
-    }
-  }
-
-  async function submitPin(pin: string) {
-    if (!pinFor) return;
-    const res = await fetch(`/api/users/${pinFor.id}/pin`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pin }),
-    });
-    const d = (await res.json()) as { ok: boolean };
-    if (d.ok) router.push(`/kind/${pinFor.id}`);
-    else setPinError("PIN stimmt nicht. Nochmal!");
+    router.push(`/kind/${u.id}`);
   }
 
   async function logout() {
@@ -62,7 +42,7 @@ export default function Home() {
           <span className="font-semibold tracking-tight">Ferien-Lerncoach</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Wer übt heute?</h1>
-        <p className="text-neutral-500 mt-2">Wähle dein Profil aus.</p>
+        <p className="text-neutral-500 mt-2">Tippe auf ein Kind, um seinen Bereich zu öffnen.</p>
       </header>
 
       {users === null ? (
@@ -107,15 +87,6 @@ export default function Home() {
           Noch keine Kinder angelegt. Tippe auf <span className="font-semibold">Eltern</span>, um zu
           starten.
         </p>
-      )}
-
-      {pinFor && (
-        <PinPad
-          title={`PIN für ${pinFor.name}`}
-          onSubmit={submitPin}
-          onCancel={() => setPinFor(null)}
-          error={pinError}
-        />
       )}
     </main>
   );

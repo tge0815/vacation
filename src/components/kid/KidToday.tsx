@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Flame, Loader2, Play, Check } from "lucide-react";
+import { ArrowLeft, Flame, Loader2, Play, Check, LogOut } from "lucide-react";
 import { ProgressRing } from "@/components/ProgressRing";
 import { color } from "@/components/colors";
 import { subjectIcon } from "@/components/subjectIcon";
@@ -34,8 +34,19 @@ export function KidToday({ userId }: { userId: number }) {
   const router = useRouter();
   const [user, setUser] = useState<PublicUser | null>(null);
   const [prog, setProg] = useState<Progress | null>(null);
+  const [role, setRole] = useState<"parent" | "child" | null>(null);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    router.push("/login");
+    router.refresh();
+  }
 
   useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d: { role?: "parent" | "child" }) => setRole(d.role ?? null))
+      .catch(() => {});
     fetch(`/api/users/${userId}`)
       .then((r) => r.json())
       .then((d: { user: PublicUser }) => setUser(d.user))
@@ -59,12 +70,21 @@ export function KidToday({ userId }: { userId: number }) {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 flex-1">
       <header className="flex items-center justify-between mb-8">
-        <button
-          onClick={() => router.push("/")}
-          className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-        >
-          <ArrowLeft size={16} /> Profil wechseln
-        </button>
+        {role === "child" ? (
+          <button
+            onClick={logout}
+            className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+          >
+            <LogOut size={16} /> Abmelden
+          </button>
+        ) : (
+          <button
+            onClick={() => router.push("/")}
+            className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+          >
+            <ArrowLeft size={16} /> Profil wechseln
+          </button>
+        )}
         <div className="flex items-center gap-3">
           {prog && prog.streak > 0 && (
             <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500">

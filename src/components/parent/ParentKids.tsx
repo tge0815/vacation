@@ -1,20 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Pencil, Check, X, Loader2, KeyRound } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, Loader2, KeyRound, UserCircle2 } from "lucide-react";
 import { COLOR_NAMES, color } from "@/components/colors";
 import type { PublicUser } from "@/lib/serialize";
 
 const EMOJIS = ["🦊", "🐼", "🦁", "🐯", "🐸", "🐙", "🦄", "🐝", "🦖", "🐬", "🦉", "🦆", "🐰", "🚀", "⚽", "🎨", "🎸"];
 
-type Draft = { name: string; emoji: string; colorName: string; grade: number; pin: string };
-const emptyDraft = (): Draft => ({ name: "", emoji: "🦊", colorName: "sky", grade: 5, pin: "" });
+type Draft = {
+  name: string;
+  emoji: string;
+  colorName: string;
+  grade: number;
+  username: string;
+  password: string;
+};
+const emptyDraft = (): Draft => ({
+  name: "",
+  emoji: "🦊",
+  colorName: "sky",
+  grade: 5,
+  username: "",
+  password: "",
+});
 
 export function ParentKids() {
   const [users, setUsers] = useState<PublicUser[] | null>(null);
   const [editing, setEditing] = useState<number | "new" | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function reload() {
     const d = (await (await fetch("/api/users")).json()) as { users: PublicUser[] };
@@ -28,43 +43,57 @@ export function ParentKids() {
   }, []);
 
   function startNew() {
+    setError(null);
     setDraft(emptyDraft());
     setEditing("new");
   }
   function startEdit(u: PublicUser) {
-    setDraft({ name: u.name, emoji: u.emoji, colorName: u.color, grade: u.grade, pin: "" });
+    setError(null);
+    setDraft({
+      name: u.name,
+      emoji: u.emoji,
+      colorName: u.color,
+      grade: u.grade,
+      username: u.username ?? "",
+      password: "",
+    });
     setEditing(u.id);
   }
 
   async function save() {
     if (!draft.name.trim()) return;
     setBusy(true);
+    setError(null);
     try {
-      if (editing === "new") {
-        await fetch("/api/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: draft.name,
-            emoji: draft.emoji,
-            color: draft.colorName,
-            grade: draft.grade,
-            pin: draft.pin || null,
-          }),
-        });
-      } else if (typeof editing === "number") {
-        await fetch(`/api/users/${editing}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: draft.name,
-            emoji: draft.emoji,
-            color: draft.colorName,
-            grade: draft.grade,
-            // pin nur ändern wenn eingegeben; leer = unverändert lassen
-            ...(draft.pin ? { pin: draft.pin } : {}),
-          }),
-        });
+      const isNew = editing === "new";
+      const url = isNew ? "/api/users" : `/api/users/${editing}`;
+      const method = isNew ? "POST" : "PATCH";
+      const payload: Record<string, unknown> = {
+        name: draft.name,
+        emoji: draft.emoji,
+        color: draft.colorName,
+        grade: draft.grade,
+        // Benutzername immer mitsenden (leer = Login entfernen).
+        username: draft.username.trim() || null,
+      };
+      // Passwort nur senden, wenn eingegeben (leer = unverändert lassen).
+      if (draft.password) payload.password = draft.password;
+      // Beim Neuanlegen mit Benutzername ist ein Passwort nötig.
+      if (isNew && draft.username.trim() && !draft.password) {
+        setError("Für den Login bitte auch ein Passwort vergeben.");
+        setBusy(false);
+        return;
+      }
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const d = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(d.error ?? "Speichern fehlgeschlagen");
+        setBusy(false);
+        return;
       }
       setEditing(null);
       await reload();
@@ -79,15 +108,6 @@ export function ParentKids() {
     await reload();
   }
 
-  async function clearPin(id: number) {
-    await fetch(`/api/users/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pin: null }),
-    });
-    await reload();
-  }
-
   if (users === null)
     return (
       <div className="flex justify-center py-12 text-neutral-400">
@@ -99,7 +119,19 @@ export function ParentKids() {
     <div className="space-y-4">
       {users.map((u) => {
         const c = color(u.color);
-        if (editing === u.id) return <Editor key={u.id} draft={draft} setDraft={setDraft} onSave={save} onCancel={() => setEditing(null)} busy={busy} />;
+        if (editing === u.id)
+          return (
+            <Editor
+              key={u.id}
+              draft={draft}
+              setDraft={setDraft}
+              onSave={save}
+              onCancel={() => setEditing(null)}
+              busy={busy}
+              error={error}
+              isNew={false}
+            />
+          );
         return (
           <div
             key={u.id}
@@ -110,24 +142,19 @@ export function ParentKids() {
             </span>
             <div className="flex-1 min-w-0">
               <div className="font-semibold">{u.name}</div>
-              <div className="text-xs text-neutral-500">
-                Klasse {u.grade}
-                {u.hasPin && (
-                  <span className="ml-2 inline-flex items-center gap-1 text-amber-500">
-                    <KeyRound size={12} /> PIN
+              <div className="text-xs text-neutral-500 flex items-center gap-1.5 flex-wrap">
+                <span>Klasse {u.grade}</span>
+                {u.hasLogin ? (
+                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <UserCircle2 size={12} /> {u.username}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-amber-500">
+                    <KeyRound size={12} /> kein Login
                   </span>
                 )}
               </div>
             </div>
-            {u.hasPin && (
-              <button
-                onClick={() => clearPin(u.id)}
-                title="PIN entfernen"
-                className="text-neutral-400 hover:text-amber-500 p-2"
-              >
-                <KeyRound size={18} />
-              </button>
-            )}
             <button onClick={() => startEdit(u)} className="text-neutral-400 hover:text-sky-500 p-2">
               <Pencil size={18} />
             </button>
@@ -139,7 +166,15 @@ export function ParentKids() {
       })}
 
       {editing === "new" ? (
-        <Editor draft={draft} setDraft={setDraft} onSave={save} onCancel={() => setEditing(null)} busy={busy} />
+        <Editor
+          draft={draft}
+          setDraft={setDraft}
+          onSave={save}
+          onCancel={() => setEditing(null)}
+          busy={busy}
+          error={error}
+          isNew
+        />
       ) : (
         <button
           onClick={startNew}
@@ -160,12 +195,16 @@ function Editor({
   onSave,
   onCancel,
   busy,
+  error,
+  isNew,
 }: {
   draft: Draft;
   setDraft: (d: Draft) => void;
   onSave: () => void;
   onCancel: () => void;
   busy: boolean;
+  error: string | null;
+  isNew: boolean;
 }) {
   return (
     <div className="rounded-2xl bg-white dark:bg-neutral-900 border-2 border-sky-500/40 p-4 space-y-4">
@@ -209,30 +248,54 @@ function Editor({
         </div>
       </div>
 
-      <div className="flex gap-3">
-        <label className="flex-1 text-sm">
-          <span className="text-xs font-medium text-neutral-500">Klasse</span>
-          <input
-            type="number"
-            min={1}
-            max={13}
-            value={draft.grade}
-            onChange={(e) => setDraft({ ...draft, grade: Number(e.target.value) })}
-            className="w-full mt-1 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-2 focus:border-sky-500 focus:outline-none"
-          />
-        </label>
-        <label className="flex-1 text-sm">
-          <span className="text-xs font-medium text-neutral-500">PIN (optional, 4 Ziffern)</span>
-          <input
-            inputMode="numeric"
-            maxLength={4}
-            value={draft.pin}
-            onChange={(e) => setDraft({ ...draft, pin: e.target.value.replace(/\D/g, "") })}
-            placeholder="leer = keine"
-            className="w-full mt-1 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-2 focus:border-sky-500 focus:outline-none"
-          />
-        </label>
+      <label className="block text-sm">
+        <span className="text-xs font-medium text-neutral-500">Klasse</span>
+        <input
+          type="number"
+          min={1}
+          max={13}
+          value={draft.grade}
+          onChange={(e) => setDraft({ ...draft, grade: Number(e.target.value) })}
+          className="w-full mt-1 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-2 focus:border-sky-500 focus:outline-none"
+        />
+      </label>
+
+      {/* Kind-Login (vom Elternteil vergeben) */}
+      <div className="rounded-xl bg-neutral-50 dark:bg-neutral-800/40 p-3 space-y-2">
+        <div className="text-xs font-medium text-neutral-500">
+          Login fürs Kind (damit es sich selbst anmelden kann)
+        </div>
+        <div className="flex gap-3 flex-wrap">
+          <label className="flex-1 min-w-[140px] text-sm">
+            <span className="text-xs text-neutral-500">Benutzername</span>
+            <input
+              autoCapitalize="none"
+              value={draft.username}
+              onChange={(e) => setDraft({ ...draft, username: e.target.value.replace(/\s/g, "") })}
+              placeholder="z.B. max"
+              className="w-full mt-1 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-2 focus:border-sky-500 focus:outline-none"
+            />
+          </label>
+          <label className="flex-1 min-w-[140px] text-sm">
+            <span className="text-xs text-neutral-500">
+              Passwort {isNew ? "" : "(leer = unverändert)"}
+            </span>
+            <input
+              type="text"
+              value={draft.password}
+              onChange={(e) => setDraft({ ...draft, password: e.target.value })}
+              placeholder={isNew ? "mind. 4 Zeichen" : "••••"}
+              className="w-full mt-1 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-transparent px-3 py-2 focus:border-sky-500 focus:outline-none"
+            />
+          </label>
+        </div>
+        <p className="text-[11px] text-neutral-400">
+          Benutzername leeren = Login entfernen. Passwort ist im Klartext sichtbar, damit du es dem
+          Kind sagen kannst.
+        </p>
       </div>
+
+      {error && <p className="text-sm text-rose-500">{error}</p>}
 
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800">
@@ -298,6 +361,9 @@ function ParentPinSetting() {
           {open ? "Schließen" : "Ändern"}
         </button>
       </div>
+      <p className="text-[11px] text-neutral-400 mt-1">
+        Zusätzlicher Schutz für den Eltern-Bereich (zusätzlich zum Eltern-Login).
+      </p>
       {open && (
         <div className="mt-3 space-y-2">
           {pinSet && (

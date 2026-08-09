@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getParentPinHash, setParentPin, verifyPin } from "@/lib/db/repo";
-import { familyIdFrom, unauthorized } from "@/lib/auth/server";
+import { requireParent } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // GET → ist ein Eltern-PIN gesetzt (für diese Familie)?
 export async function GET(req: NextRequest) {
-  const familyId = await familyIdFrom(req);
-  if (!familyId) return unauthorized();
+  const familyId = await requireParent(req);
+  if (familyId instanceof NextResponse) return familyId;
   const hash = getParentPinHash(familyId);
   return NextResponse.json({ pinSet: Boolean(hash) });
 }
 
 // POST { action: "verify" | "set", pin, newPin? }
 export async function POST(req: NextRequest) {
-  const familyId = await familyIdFrom(req);
-  if (!familyId) return unauthorized();
+  const familyId = await requireParent(req);
+  if (familyId instanceof NextResponse) return familyId;
   const body = (await req.json()) as {
     action?: "verify" | "set";
     pin?: string;

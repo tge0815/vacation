@@ -492,6 +492,24 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       for (const u of users) insGoal.run(u.id, vokId);
     },
   },
+  {
+    // Eigener Kind-Login: Benutzername + Passwort (vom Elternteil vergeben).
+    // Ersetzt den 4-stelligen Profil-PIN. Benutzername ist global eindeutig,
+    // damit der Login ohne Familien-Kontext aufgelöst werden kann.
+    name: "020_child_login",
+    run: (db) => {
+      const cols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+      if (!cols.some((c) => c.name === "username")) {
+        db.exec("ALTER TABLE users ADD COLUMN username TEXT");
+      }
+      if (!cols.some((c) => c.name === "password_hash")) {
+        db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT");
+      }
+      db.exec(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username) WHERE username IS NOT NULL",
+      );
+    },
+  },
 ];
 
 // Themen-Beschreibung fürs Vokabel-Training (eigener Lernbereich). Fragt EIN
@@ -710,6 +728,8 @@ export type UserRow = {
   color: string;
   emoji: string;
   pin_hash: string | null;
+  username: string | null;
+  password_hash: string | null;
   grade: number;
   sort: number;
   coins: number;

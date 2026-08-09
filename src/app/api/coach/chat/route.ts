@@ -1,14 +1,15 @@
 import { NextRequest } from "next/server";
 import { streamParentCoach } from "@/lib/ai/coach";
-import { familyIdFrom, unauthorized } from "@/lib/auth/server";
+import { requireParent } from "@/lib/auth/server";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
 
 export async function POST(req: NextRequest) {
-  const familyId = await familyIdFrom(req);
-  if (!familyId) return unauthorized();
+  const familyId = await requireParent(req);
+  if (familyId instanceof NextResponse) return familyId;
   const body = (await req.json()) as {
     text?: string;
     useReasoning?: boolean;

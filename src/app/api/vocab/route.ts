@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listVocab, listSubjects, importVocab, listUsers } from "@/lib/db/repo";
+import { listVocab, listSubjects, importVocab, listUsers, getUserInFamily } from "@/lib/db/repo";
 import { englishVocabPairs } from "@/data/englishVocab";
-import { authUser, familyIdFrom, unauthorized } from "@/lib/auth/server";
+import { authUser, requireParent } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,17 +28,19 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as { userId?: number; allUsers?: boolean };
 
+  // Vokabel-Import ist Eltern-Sache.
+  const familyId = await requireParent(req);
+  if (familyId instanceof NextResponse) return familyId;
   let targetUserIds: number[];
   if (body.allUsers) {
-    const familyId = await familyIdFrom(req);
-    if (!familyId) return unauthorized();
     targetUserIds = listUsers(familyId).map((u) => u.id);
     if (targetUserIds.length === 0) {
       return NextResponse.json({ error: "Keine Kinder angelegt." }, { status: 400 });
     }
   } else {
-    const gate = await authUser(req, Number(body.userId));
-    if (gate instanceof NextResponse) return gate;
+    if (!getUserInFamily(Number(body.userId), familyId)) {
+      return NextResponse.json({ error: "Kind nicht gefunden" }, { status: 404 });
+    }
     targetUserIds = [Number(body.userId)];
   }
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listGoals, setGoal, listSubjects, getGoal, type GoalType } from "@/lib/db/repo";
-import { authUser } from "@/lib/auth/server";
+import { listGoals, setGoal, listSubjects, getGoal, getUserInFamily, type GoalType } from "@/lib/db/repo";
+import { authUser, requireParent } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,12 +31,16 @@ export async function PUT(req: NextRequest) {
     userId?: number;
     goals?: { subjectId: number; goalType?: GoalType; target?: number; level?: number }[];
   };
-  const gate = await authUser(req, Number(body.userId));
-  if (gate instanceof NextResponse) return gate;
+  // Ziele setzen ist Eltern-Sache.
+  const familyId = await requireParent(req);
+  if (familyId instanceof NextResponse) return familyId;
+  const userId = Number(body.userId);
+  if (!getUserInFamily(userId, familyId)) {
+    return NextResponse.json({ error: "Kind nicht gefunden" }, { status: 404 });
+  }
   if (!Array.isArray(body.goals)) {
     return NextResponse.json({ error: "goals fehlt" }, { status: 400 });
   }
-  const userId = Number(body.userId);
   for (const g of body.goals) {
     const type: GoalType = g.goalType === "count" ? "count" : "minutes";
     setGoal(userId, g.subjectId, g.target ?? 0, type, g.level ?? 0);
