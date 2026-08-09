@@ -5,11 +5,12 @@ Tag ein paar Minuten **Deutsch, Mathe und Englisch** (5. Klasse Gymnasium).
 Die Aufgaben werden von Claude **generiert und bewertet** — inklusive **Vorlesen**
 mit Rückmeldung.
 
-Läuft komplett lokal im Docker-Container, genau wie das Personal-Dashboard.
-Die KI nutzt die **Claude-Max-Plan-Subscription** über das Claude Agent SDK —
-**kein API-Key, keine Pay-per-Token-Kosten.**
+Läuft im Docker-Container — lokal im Heimnetz oder auf einem öffentlichen Server.
+Die KI nutzt die **Anthropic-API** über den offiziellen SDK mit einem
+**`ANTHROPIC_API_KEY`** (Pay-per-Token, sehr günstig). Mehrere Familien möglich,
+jede mit eigenem Login und eigenen Kindern.
 
-Stack: Next.js 16 · TypeScript · Tailwind CSS 4 · better-sqlite3 · Claude Agent SDK.
+Stack: Next.js 16 · TypeScript · Tailwind CSS 4 · better-sqlite3 · `@anthropic-ai/sdk`.
 
 ## Features
 
@@ -31,12 +32,14 @@ Stack: Next.js 16 · TypeScript · Tailwind CSS 4 · better-sqlite3 · Claude Ag
 ./setup.sh
 ```
 
-Das Skript prüft Docker, richtet die Claude-Auth ein (führt einmalig durch
-`claude login`, falls nötig), baut das Image und startet den Container.
+Das Skript prüft Docker, legt `.env` an (fragt einmalig nach dem
+`ANTHROPIC_API_KEY`, erzeugt Session-Secret und Einladungscode), baut das Image
+und startet den Container.
 
-App danach erreichbar auf <http://localhost:3001>.
+App danach erreichbar auf <http://localhost:3001>. Beim ersten Öffnen
+**Familie registrieren** (Einladungscode aus der setup.sh-Ausgabe bzw. `.env`).
 
-Alternativ manuell (Auth muss bereits im Volume liegen):
+Alternativ manuell (`.env` mit `ANTHROPIC_API_KEY` muss vorhanden sein):
 
 ```bash
 docker compose up -d --build
@@ -72,8 +75,8 @@ npm install
 npm run dev      # http://localhost:3000
 ```
 
-Für die KI-Funktionen im Dev-Modus muss Claude Code auf dem Rechner
-authentifiziert sein (`claude login`). Die DB liegt lokal unter `./data`.
+Für die KI-Funktionen im Dev-Modus eine `.env.local` mit `ANTHROPIC_API_KEY=sk-ant-…`
+anlegen (siehe `.env.example`). Die DB liegt lokal unter `./data`.
 
 ## Daten
 

@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
 # Ferien-Lerncoach — One-Shot-Setup.
 #
-# Die KI laeuft AUSSCHLIESSLICH ueber Claude Code mit Max-Plan-Auth.
-# Es gibt KEINE API-Key-Variante.
+# Die KI laeuft ueber die Anthropic-API mit einem API-Key (Pay-per-Token).
 #
 # Macht alles:
 #   - prueft Docker
-#   - installiert Claude Code auf dem Host (falls fehlt)
-#   - leitet durch claude login (falls noch nicht authentifiziert)
-#   - kopiert Host-Auth ins Docker-Volume
+#   - legt .env an (API-Key, Session-Secret, Einladungscode)
 #   - baut & startet den Container
+#   - prueft, ob die KI erreichbar ist
 #
-# Idempotent: zweiter Aufruf = git pull + Rebuild + Auth-Sync.
+# Idempotent: zweiter Aufruf = git pull + Rebuild.
 #
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
@@ -22,10 +20,6 @@ log()  { printf "${G}→${N} %s\n" "$*"; }
 warn() { printf "${Y}!${N} %s\n" "$*"; }
 err()  { printf "${R}✗${N} %s\n" "$*" >&2; }
 step() { printf "\n${B}■${N} ${B}%s${N}\n" "$*"; }
-
-# Compose-Projektname = Verzeichnisname (klein), so wie docker compose es macht.
-PROJECT="$(basename "$PWD" | tr '[:upper:]' '[:lower:]')"
-CLAUDE_VOL="${PROJECT}_lernferien-claude"
 
 # ──── 1. Prereq-Check ─────────────────────────────────────────────────
 step "Voraussetzungen prüfen"
@@ -61,73 +55,9 @@ if pgrep -f "next dev\|next-server" >/dev/null 2>&1; then
   sleep 1
 fi
 
-# ──── 4. Claude Code Auth (Pflicht) ───────────────────────────────────
-step "Claude Code Auth"
-if ! command -v claude &>/dev/null; then
-  warn "Claude Code nicht installiert. Installiere global via npm..."
-  if ! command -v npm &>/dev/null; then
-    err "npm fehlt auf dem Host. Installiere Node.js v22+ (z.B. via nvm)."
-    exit 1
-  fi
-  npm install -g @anthropic-ai/claude-code
-  log "Claude Code installiert"
-fi
-
-AUTH_DIR="$HOME/.claude"
-HAS_AUTH=0
-for f in "$AUTH_DIR/credentials.json" "$AUTH_DIR/.credentials.json" "$AUTH_DIR/auth.json"; do
-  [ -f "$f" ] && HAS_AUTH=1 && break
-done
-
-# Erneutes Login erzwingen mit:  RELOGIN=1 ./setup.sh
-# (nötig, wenn das Max-Plan-Token abgelaufen ist und keine Aufgaben mehr laden)
-if [ "${RELOGIN:-0}" = "1" ]; then
-  warn "RELOGIN gesetzt — starte frischen Login-Flow"
-  claude /logout >/dev/null 2>&1 || true
-  claude || true
-  HAS_AUTH=0
-  for f in "$AUTH_DIR/credentials.json" "$AUTH_DIR/.credentials.json" "$AUTH_DIR/auth.json"; do
-    [ -f "$f" ] && HAS_AUTH=1 && break
-  done
-fi
-
-if [ "$HAS_AUTH" = "0" ]; then
-  warn "Keine Claude-Code-Auth gefunden in $AUTH_DIR"
-  echo
-  echo "  Du wirst jetzt durch den Login-Flow geleitet."
-  echo "  Öffne den Link im Browser, autorisiere mit deinem Max-Plan-Account,"
-  echo "  und folge den Anweisungen im Terminal."
-  echo
-  printf "  Drücke ${B}Enter${N} um Claude Code zu starten…"
-  read -r _
-  claude || true
-  echo
-  HAS_AUTH=0
-  for f in "$AUTH_DIR/credentials.json" "$AUTH_DIR/.credentials.json" "$AUTH_DIR/auth.json"; do
-    [ -f "$f" ] && HAS_AUTH=1 && break
-  done
-  if [ "$HAS_AUTH" = "0" ]; then
-    err "Auth fehlgeschlagen oder abgebrochen. Re-Run ./setup.sh nach dem Login."
-    exit 1
-  fi
-  log "Auth-Dateien gefunden"
-else
-  log "Claude-Code-Auth vorhanden ($AUTH_DIR)"
-fi
-
-# Auth ins Volume kopieren (immer — refresht eventuell Tokens)
-step "Sync Auth ins Docker-Volume"
-docker volume create "$CLAUDE_VOL" >/dev/null
-docker run --rm \
-  -v "$CLAUDE_VOL":/dest \
-  -v "$AUTH_DIR":/src:ro \
-  alpine sh -c 'rm -rf /dest/* /dest/.[!.]* 2>/dev/null; cp -a /src/. /dest/ && chown -R 1001:1001 /dest' >/dev/null
-log "Auth ins Volume kopiert (UID 1001)"
-
-# ──── 4b. Login-Konfiguration (.env) ──────────────────────────────────
+# ──── 4. Konfiguration (.env) ─────────────────────────────────────────
 # docker compose liest .env im Projektordner automatisch für ${VAR}.
-# Wir legen Session-Secret + Einladungscode einmalig an (Zufallswerte).
-step "Login-Konfiguration prüfen"
+step "Konfiguration prüfen (.env)"
 touch .env
 gen_secret() { head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 ensure_env() { # key, value
@@ -146,6 +76,32 @@ if ensure_env LEARN_INVITE_CODE "$(gen_secret | cut -c1-8)"; then
 fi
 INVITE_NOW="$(grep '^LEARN_INVITE_CODE=' .env | cut -d= -f2-)"
 
+# API-Key: aus .env, sonst aus der Umgebung, sonst interaktiv abfragen.
+API_KEY_VAL="$(grep '^ANTHROPIC_API_KEY=' .env 2>/dev/null | cut -d= -f2- || true)"
+if [ -z "$API_KEY_VAL" ] || [ "$API_KEY_VAL" = "sk-ant-..." ]; then
+  if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+    API_KEY_VAL="$ANTHROPIC_API_KEY"
+    grep -v '^ANTHROPIC_API_KEY=' .env > .env.tmp 2>/dev/null || true; mv -f .env.tmp .env 2>/dev/null || true
+    printf 'ANTHROPIC_API_KEY=%s\n' "$API_KEY_VAL" >> .env
+    log "API-Key aus Umgebung übernommen (.env)"
+  else
+    echo
+    echo "  Es wird ein Anthropic-API-Key gebraucht."
+    echo "  Console → https://console.anthropic.com/settings/keys"
+    printf "  API-Key (sk-ant-…): "
+    read -r API_KEY_VAL
+    if [ -z "$API_KEY_VAL" ]; then
+      err "Kein API-Key eingegeben. Trage ANTHROPIC_API_KEY in .env ein und starte erneut."
+      exit 1
+    fi
+    grep -v '^ANTHROPIC_API_KEY=' .env > .env.tmp 2>/dev/null || true; mv -f .env.tmp .env 2>/dev/null || true
+    printf 'ANTHROPIC_API_KEY=%s\n' "$API_KEY_VAL" >> .env
+    log "API-Key gespeichert (.env)"
+  fi
+else
+  log "API-Key vorhanden (.env)"
+fi
+
 # ──── 5. Build + Start ────────────────────────────────────────────────
 step "Container bauen + starten"
 docker compose up -d --build
@@ -154,7 +110,7 @@ docker compose up -d --build
 step "Warte bis App antwortet (max. 60 s)"
 READY=0
 for i in $(seq 1 60); do
-  if curl -fs http://localhost:3001/ >/dev/null 2>&1; then
+  if curl -fs http://localhost:3001/login >/dev/null 2>&1; then
     log "App erreichbar nach ${i} s"
     READY=1
     break
@@ -169,8 +125,8 @@ if [ "$READY" != "1" ]; then
   exit 1
 fi
 
-# ──── 6b. KI-/Auth-Check ──────────────────────────────────────────────
-step "KI-Anmeldung prüfen (Max-Plan)"
+# ──── 6b. KI-Check ────────────────────────────────────────────────────
+step "KI-Erreichbarkeit prüfen (Anthropic-API)"
 AI_OK=0
 for i in 1 2 3; do
   RESP=$(curl -fs --max-time 50 http://localhost:3001/api/health 2>/dev/null || echo "")
@@ -181,14 +137,13 @@ for i in 1 2 3; do
   sleep 2
 done
 if [ "$AI_OK" = "1" ]; then
-  log "KI erreichbar & angemeldet"
+  log "KI erreichbar (API-Key gültig)"
 else
-  warn "KI antwortet nicht / nicht angemeldet. Meldung:"
+  warn "KI antwortet nicht. Meldung:"
   echo "   $RESP"
   echo
-  warn "Wahrscheinlich ist das Max-Plan-Token abgelaufen. So neu anmelden:"
-  echo "   1) claude          # auf dem HOST kurz starten; falls nötig neu einloggen"
-  echo "   2) RELOGIN=1 ./setup.sh    # erzwingt frischen Login + Sync ins Volume"
+  warn "Prüfe den ANTHROPIC_API_KEY in .env (gültig? Guthaben vorhanden?) und starte neu:"
+  echo "   docker compose up -d --build"
 fi
 
 # ──── 7. Status ───────────────────────────────────────────────────────
@@ -201,14 +156,14 @@ echo "Ferien-Lerncoach:"
 echo "   http://localhost:3001"
 [ -n "$HOST_IP" ] && echo "   http://${HOST_IP}:3001"
 echo
-echo "Backend: Claude Agent SDK (Max-Plan-Subscription, kein API-Key)"
+echo "Backend: Anthropic-API (API-Key, Pay-per-Token)"
 echo
 echo "Login: Beim ersten Öffnen 'Familie registrieren' mit dem Einladungscode:"
 printf "   Einladungscode: ${B}%s${N}\n" "${INVITE_NOW:-siehe .env}"
 echo "   (Bestehende lokale Kinder: Login ${LEARN_DEFAULT_FAMILY_EMAIL:-eltern@local} / ${LEARN_DEFAULT_FAMILY_PASSWORD:-lernen})"
 echo
-echo "Hinweis öffentlicher Server: Unbedingt HTTPS davor (Reverse-Proxy),"
-echo "sonst sind Login-Cookies und Mikrofon (Vorlesen) unsicher/blockiert."
+echo "Hinweis öffentlicher Server: Unbedingt HTTPS davor (Reverse-Proxy) und"
+echo "LEARN_COOKIE_SECURE=1 setzen, sonst sind Login-Cookies und Mikrofon unsicher/blockiert."
 echo
 echo "Logs live:    docker compose logs -f lernferien"
 echo "Update:       ./setup.sh"

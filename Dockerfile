@@ -24,29 +24,26 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV LEARN_DATA_DIR=/data
 
-# ca-certificates (fuer HTTPS) + git (das Agent SDK nutzt git intern) + tini
+# ca-certificates (fuer HTTPS zur Anthropic-API) + tini
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates git tini \
+ && apt-get install -y --no-install-recommends ca-certificates tini \
  && rm -rf /var/lib/apt/lists/*
-
-# Claude Code CLI global installieren — wird vom Agent SDK als Subprocess aufgerufen
-RUN npm install -g @anthropic-ai/claude-code
 
 RUN groupadd --system --gid 1001 nodejs \
  && useradd  --system --uid 1001 --gid nodejs --home /home/nextjs --create-home --shell /bin/bash nextjs \
- && mkdir -p /data /home/nextjs/.claude \
+ && mkdir -p /data \
  && chown -R nextjs:nodejs /data /home/nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-# better-sqlite3 native module + Agent SDK explizit kopieren
+# better-sqlite3 native module + Anthropic SDK explizit kopieren
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@anthropic-ai ./node_modules/@anthropic-ai
 
 USER nextjs
 ENV HOME=/home/nextjs
 EXPOSE 3000
-VOLUME ["/data", "/home/nextjs/.claude"]
+VOLUME ["/data"]
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "server.js"]

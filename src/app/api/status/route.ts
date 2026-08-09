@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    backend: "Max-Plan",
+    backend: "API-Key",
     models: {
       default: { id: DEFAULT_MODEL, label: modelLabel(DEFAULT_MODEL) },
       reasoning: { id: REASONING_MODEL, label: modelLabel(REASONING_MODEL) },

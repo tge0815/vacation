@@ -7,9 +7,9 @@ services:
     ports:
       - "3001:3000"
     environment:
-      # === KI (Max-Plan via Claude Code Agent SDK) ===
-      # Auth liegt im lernferien-claude-Volume (siehe setup.sh).
-      # KEIN API-Key, KEINE Pay-per-Token-Kosten.
+      # === KI (Anthropic-API über API-Key) ===
+      # API-Key aus der .env (siehe .env.example). Pay-per-Token, sehr günstig.
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY muss in .env gesetzt sein}"
       # Standard = schnelles Haiku (Aufgaben generieren, einfach bewerten, Vorlesen).
       # Reasoning = Sonnet (Textaufgaben/Maßstab bewerten, Eltern-Coach "Gründlich").
       LEARN_AGENT_DEFAULT_MODEL: "claude-haiku-4-5-20251001"
@@ -35,10 +35,5 @@ services:
       # SQLite-DB — persistiert!
       - lernferien-data:/data
 
-      # Claude Code Auth (Max-Plan): Container hat eigene .claude im Volume.
-      # setup.sh kopiert Host-Credentials einmalig rein. Re-Run synct neu.
-      - lernferien-claude:/home/nextjs/.claude
-
 volumes:
   lernferien-data:
-  lernferien-claude:

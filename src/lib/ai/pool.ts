@@ -32,7 +32,7 @@ function enqueue(userId: number, subjectId: number) {
   void processWarm();
 }
 
-// Wärmt IMMER nur eine Generierung gleichzeitig (schont die Max-Plan-Subprozesse).
+// Wärmt IMMER nur eine Generierung gleichzeitig (schont API-Rate-Limits).
 async function processWarm() {
   if (warming) return;
   warming = true;
