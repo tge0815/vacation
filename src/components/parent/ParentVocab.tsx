@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Check, X } from "lucide-react";
+import { Loader2, Check, X, BookPlus } from "lucide-react";
 import { color } from "@/components/colors";
 import type { PublicUser } from "@/lib/serialize";
 
@@ -19,6 +19,34 @@ export function ParentVocab() {
   const [users, setUsers] = useState<PublicUser[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
   const [data, setData] = useState<{ forUser: number; vocab: Vocab[] } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+
+  function loadVocab(uid: number) {
+    fetch(`/api/vocab?userId=${uid}`)
+      .then((r) => r.json())
+      .then((d: { vocab: Vocab[] }) => setData({ forUser: uid, vocab: d.vocab }))
+      .catch(() => setData({ forUser: uid, vocab: [] }));
+  }
+
+  function importSchoolVocab() {
+    if (!userId || importing) return;
+    setImporting(true);
+    setImportMsg(null);
+    fetch("/api/vocab", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    })
+      .then((r) => r.json())
+      .then((d: { added?: number; skipped?: number; total?: number; error?: string }) => {
+        if (d.error) setImportMsg(d.error);
+        else setImportMsg(`${d.added} neu hinzugefügt, ${d.skipped} schon vorhanden (${d.total} gesamt).`);
+        loadVocab(userId);
+      })
+      .catch(() => setImportMsg("Import fehlgeschlagen."))
+      .finally(() => setImporting(false));
+  }
 
   useEffect(() => {
     fetch("/api/users")
@@ -31,10 +59,7 @@ export function ParentVocab() {
 
   useEffect(() => {
     if (!userId) return;
-    fetch(`/api/vocab?userId=${userId}`)
-      .then((r) => r.json())
-      .then((d: { vocab: Vocab[] }) => setData({ forUser: userId, vocab: d.vocab }))
-      .catch(() => setData({ forUser: userId, vocab: [] }));
+    loadVocab(userId);
   }, [userId]);
 
   const vocab = data && data.forUser === userId ? data.vocab : null;
@@ -48,7 +73,10 @@ export function ParentVocab() {
         {users.map((u) => (
           <button
             key={u.id}
-            onClick={() => setUserId(u.id)}
+            onClick={() => {
+              setImportMsg(null);
+              setUserId(u.id);
+            }}
             className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium ${
               userId === u.id ? `${color(u.color).bg} text-white` : "bg-neutral-100 dark:bg-neutral-800"
             }`}
@@ -62,6 +90,18 @@ export function ParentVocab() {
         Abgefragte Vokabeln. Falsche kommen automatisch wieder dran, bis sie sitzen — Status wird nach
         mehrmals richtig zu „gelernt“.
       </p>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={importSchoolVocab}
+          disabled={importing}
+          className="inline-flex items-center gap-2 rounded-xl bg-sky-500 text-white text-sm font-semibold px-4 py-2 disabled:opacity-40 hover:opacity-90"
+        >
+          {importing ? <Loader2 className="animate-spin" size={16} /> : <BookPlus size={16} />}
+          Schul-Vokabeln (Englisch) importieren
+        </button>
+        {importMsg && <span className="text-xs text-neutral-500">{importMsg}</span>}
+      </div>
 
       {!vocab ? (
         <div className="flex justify-center py-12 text-neutral-400">

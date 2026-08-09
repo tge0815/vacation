@@ -491,6 +491,33 @@ export function listVocab(userId: number): VocabRow[] {
     .all(userId) as VocabRow[];
 }
 
+// Statische Vokabelliste ins Vokabelheft eines Kindes importieren (Upsert).
+// Vorhandene (gleiches prompt|answer) werden übersprungen. Neue starten in
+// Box 1, damit sie bald im Training als Wiederholung drankommen.
+export function importVocab(
+  userId: number,
+  subjectId: number,
+  pairs: { prompt: string; answer: string }[],
+): { added: number; skipped: number } {
+  const db = getDb();
+  const now = Date.now();
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO vocab
+       (user_id, subject_id, prompt, answer, norm, seen, correct, wrong, box, last_seen, created_at)
+     VALUES (?, ?, ?, ?, ?, 0, 0, 0, 1, NULL, ?)`,
+  );
+  let added = 0;
+  const run = db.transaction((rows: { prompt: string; answer: string }[]) => {
+    for (const p of rows) {
+      const norm = `${vocabKey(p.prompt)}|${vocabKey(p.answer)}`;
+      const res = insert.run(userId, subjectId, p.prompt, p.answer, norm, now);
+      if (res.changes > 0) added++;
+    }
+  });
+  run(pairs);
+  return { added, skipped: pairs.length - added };
+}
+
 // --- Highscores ---
 
 // Bei Memory ist weniger besser (Züge), sonst mehr (Punkte).

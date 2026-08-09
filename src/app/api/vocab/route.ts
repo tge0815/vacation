@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listVocab } from "@/lib/db/repo";
+import { listVocab, listSubjects, importVocab } from "@/lib/db/repo";
+import { englishVocabPairs } from "@/data/englishVocab";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,4 +19,15 @@ export async function GET(req: NextRequest) {
     box: v.box,
   }));
   return NextResponse.json({ vocab });
+}
+
+// POST /api/vocab { userId } → importiert die statische Englisch-Vokabelliste
+// (aus dem Vokabelheft) ins Vokabelheft des Kindes.
+export async function POST(req: NextRequest) {
+  const body = (await req.json()) as { userId?: number };
+  if (!body.userId) return NextResponse.json({ error: "userId fehlt" }, { status: 400 });
+  const englisch = listSubjects(true).find((s) => s.key === "englisch");
+  if (!englisch) return NextResponse.json({ error: "Fach Englisch nicht gefunden" }, { status: 404 });
+  const res = importVocab(body.userId, englisch.id, englishVocabPairs());
+  return NextResponse.json({ ...res, total: englishVocabPairs().length });
 }
