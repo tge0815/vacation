@@ -76,7 +76,7 @@ for i in $(seq 1 60); do
 done
 echo
 RESP=$(curl -fs --max-time 50 http://localhost:${PORT_HOST}/api/health 2>/dev/null || echo "")
-echo "$RESP" | grep -q '"ok":true' && log "KI erreichbar (API-Key gültig)" || warn "KI-Check: $RESP"
+echo "$RESP" | grep -q '"ok":true' && log "App läuft, API-Key konfiguriert" || warn "KI-Check: $RESP"
 
 echo
 $COMPOSE ps

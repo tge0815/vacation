@@ -139,7 +139,7 @@ for i in 1 2 3; do
   sleep 2
 done
 if [ "$AI_OK" = "1" ]; then
-  log "KI erreichbar (API-Key gültig)"
+  log "App läuft, API-Key konfiguriert"
 else
   warn "KI antwortet nicht. Meldung:"
   echo "   $RESP"
