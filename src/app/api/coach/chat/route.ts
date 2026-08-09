@@ -1,11 +1,14 @@
 import { NextRequest } from "next/server";
 import { streamParentCoach } from "@/lib/ai/coach";
+import { familyIdFrom, unauthorized } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
 
 export async function POST(req: NextRequest) {
+  const familyId = await familyIdFrom(req);
+  if (!familyId) return unauthorized();
   const body = (await req.json()) as {
     text?: string;
     useReasoning?: boolean;
@@ -17,6 +20,7 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       try {
         for await (const ev of streamParentCoach({
+          familyId,
           userText: body.text ?? "",
           useReasoning: Boolean(body.useReasoning),
           history: body.history ?? [],

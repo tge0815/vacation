@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { evaluateReading } from "@/lib/ai/exercises";
 import { insertAttempt, awardCorrectCoins } from "@/lib/db/repo";
 import { ExerciseSchema, type Exercise } from "@/lib/ai/schemas";
+import { authUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,9 +18,12 @@ export async function POST(req: NextRequest) {
     transcript?: string;
     durationSec?: number;
   };
-  if (!body.userId || !body.subjectId || !body.exercise) {
-    return NextResponse.json({ error: "userId/subjectId/exercise fehlt" }, { status: 400 });
+  const gate = await authUser(req, Number(body.userId));
+  if (gate instanceof NextResponse) return gate;
+  if (!body.subjectId || !body.exercise) {
+    return NextResponse.json({ error: "subjectId/exercise fehlt" }, { status: 400 });
   }
+  const userId = Number(body.userId);
   const parsed = ExerciseSchema.safeParse(body.exercise);
   if (!parsed.success) {
     return NextResponse.json({ error: "Aufgabe ungültig" }, { status: 400 });
@@ -33,7 +37,7 @@ export async function POST(req: NextRequest) {
     const isCorrect = grade.accuracyPct >= 70;
 
     const attempt = insertAttempt({
-      userId: body.userId,
+      userId,
       subjectId: body.subjectId,
       topicId: body.topicId ?? null,
       difficulty: body.difficulty ?? exercise.difficulty,
@@ -46,7 +50,7 @@ export async function POST(req: NextRequest) {
       durationSec: body.durationSec ?? 0,
     });
 
-    const reward = awardCorrectCoins(body.userId);
+    const reward = awardCorrectCoins(userId);
 
     return NextResponse.json({ grade, isCorrect, attemptId: attempt.id, reward });
   } catch (e) {

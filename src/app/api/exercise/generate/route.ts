@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateBatch, type GeneratedExercise } from "@/lib/ai/exercises";
 import { takeFromPool, warmSubject } from "@/lib/ai/pool";
+import { authUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,10 +14,12 @@ export async function POST(req: NextRequest) {
     topicId?: number | null;
     count?: number;
   };
-  if (!body.userId || !body.subjectId) {
-    return NextResponse.json({ error: "userId/subjectId fehlt" }, { status: 400 });
+  const gate = await authUser(req, Number(body.userId));
+  if (gate instanceof NextResponse) return gate;
+  if (!body.subjectId) {
+    return NextResponse.json({ error: "subjectId fehlt" }, { status: 400 });
   }
-  const userId = body.userId;
+  const userId = Number(body.userId);
   const subjectId = body.subjectId;
   const count = body.count ?? 1;
   try {

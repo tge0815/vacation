@@ -16,6 +16,21 @@ services:
       LEARN_AGENT_REASONING_MODEL: "claude-sonnet-4-6"
       LEARN_DATA_DIR: "/data"
 
+      # === Login / Mehr-Familien (öffentlicher Server) ===
+      # Einladungscode für die Selbst-Registrierung neuer Familien.
+      # Nur wer diesen Code kennt, kann ein Konto anlegen. UNBEDINGT ändern!
+      LEARN_INVITE_CODE: "${LEARN_INVITE_CODE:-bitte-aendern}"
+      # Geheimer Schlüssel zum Signieren der Login-Sessions. setup.sh erzeugt
+      # beim ersten Start automatisch einen zufälligen Wert in .env.
+      LEARN_SESSION_SECRET: "${LEARN_SESSION_SECRET:-bitte-aendern}"
+      # Login-Daten der Standard-Familie, in die bestehende Kinder wandern
+      # (nur bei bereits vorhandenen Daten relevant).
+      LEARN_DEFAULT_FAMILY_EMAIL: "${LEARN_DEFAULT_FAMILY_EMAIL:-eltern@local}"
+      LEARN_DEFAULT_FAMILY_PASSWORD: "${LEARN_DEFAULT_FAMILY_PASSWORD:-lernen}"
+      # Auf 1 setzen, wenn die App hinter HTTPS läuft (härtere Login-Cookies).
+      # Standard 0, damit der Login auch über http:// im LAN funktioniert.
+      LEARN_COOKIE_SECURE: "${LEARN_COOKIE_SECURE:-0}"
+
     volumes:
       # SQLite-DB — persistiert!
       - lernferien-data:/data

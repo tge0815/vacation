@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { GraduationCap, Settings, Loader2 } from "lucide-react";
+import { GraduationCap, Settings, Loader2, LogOut } from "lucide-react";
 import { PinPad } from "@/components/PinPad";
 import { color } from "@/components/colors";
 import type { PublicUser } from "@/lib/serialize";
@@ -41,8 +41,21 @@ export default function Home() {
     else setPinError("PIN stimmt nicht. Nochmal!");
   }
 
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    router.push("/login");
+  }
+
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-10 flex-1">
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={logout}
+          className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+        >
+          <LogOut size={16} /> Abmelden
+        </button>
+      </div>
       <header className="text-center mb-10">
         <div className="inline-flex items-center gap-2 text-sky-500 mb-2">
           <GraduationCap size={28} />

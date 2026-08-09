@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { mkdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { hashPassword } from "../auth/password";
 
 // Default: ./data lokal (Dockerfile setzt LEARN_DATA_DIR=/data fuer Container)
 const DATA_DIR = process.env.LEARN_DATA_DIR ?? "./data";
@@ -362,6 +363,57 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       tx();
     },
   },
+  {
+    // Mehr-Familien-Fähigkeit: Familien-Konten mit Login (E-Mail + Passwort).
+    name: "016_families",
+    sql: `
+      CREATE TABLE IF NOT EXISTS families (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        parent_pin_hash TEXT,
+        created_at INTEGER NOT NULL
+      );
+    `,
+  },
+  {
+    // Kinder einer Familie zuordnen. Bestehende Kinder wandern in eine
+    // Standard-Familie (Login aus LEARN_DEFAULT_FAMILY_* oder eltern@local/lernen),
+    // damit lokale Daten weiter funktionieren.
+    name: "017_users_family",
+    run: (db) => {
+      const cols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+      if (!cols.some((c) => c.name === "family_id")) {
+        db.exec("ALTER TABLE users ADD COLUMN family_id INTEGER");
+      }
+      const orphan = db.prepare("SELECT COUNT(*) AS c FROM users WHERE family_id IS NULL").get() as {
+        c: number;
+      };
+      if (orphan.c > 0) {
+        const email = process.env.LEARN_DEFAULT_FAMILY_EMAIL ?? "eltern@local";
+        let fam = db.prepare("SELECT id FROM families WHERE email = ?").get(email) as
+          | { id: number }
+          | undefined;
+        if (!fam) {
+          const pw = process.env.LEARN_DEFAULT_FAMILY_PASSWORD ?? "lernen";
+          const parentPin =
+            (
+              db.prepare("SELECT value FROM meta WHERE key = 'parent_pin_hash'").get() as
+                | { value: string }
+                | undefined
+            )?.value || null;
+          const info = db
+            .prepare(
+              "INSERT INTO families (name, email, password_hash, parent_pin_hash, created_at) VALUES (?, ?, ?, ?, ?)",
+            )
+            .run("Familie", email, hashPassword(pw), parentPin, Date.now());
+          fam = { id: Number(info.lastInsertRowid) };
+        }
+        db.prepare("UPDATE users SET family_id = ? WHERE family_id IS NULL").run(fam.id);
+      }
+    },
+  },
 ];
 
 const GEOGRAFIE_TOPICS: Array<{
@@ -559,6 +611,7 @@ export function getDb(): Database.Database {
 
 export type UserRow = {
   id: number;
+  family_id: number;
   name: string;
   color: string;
   emoji: string;
@@ -567,6 +620,15 @@ export type UserRow = {
   sort: number;
   coins: number;
   correct_coins: number;
+  created_at: number;
+};
+
+export type FamilyRow = {
+  id: number;
+  name: string;
+  email: string;
+  password_hash: string;
+  parent_pin_hash: string | null;
   created_at: number;
 };
 

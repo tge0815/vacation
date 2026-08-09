@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import {
   getDb,
   type UserRow,
+  type FamilyRow,
   type SubjectRow,
   type TopicRow,
   type GoalRow,
@@ -9,6 +10,7 @@ import {
   type VocabRow,
 } from "./sqlite";
 import { isoWeekKey, localDateStr } from "../date";
+import { hashPassword, verifyPassword } from "../auth/password";
 
 // --- PIN-Hashing (leichtgewichtig, LAN-Kontext für Kinder) ---
 
@@ -21,19 +23,57 @@ export function verifyPin(hash: string | null, pin: string): boolean {
   return hash === hashPin(pin);
 }
 
-// --- Users ---
+// --- Families (Mandanten) ---
 
-export function listUsers(): UserRow[] {
+export function createFamily(name: string, email: string, password: string): FamilyRow {
+  const db = getDb();
+  const info = db
+    .prepare(
+      "INSERT INTO families (name, email, password_hash, parent_pin_hash, created_at) VALUES (?, ?, ?, NULL, ?)",
+    )
+    .run(name, email.toLowerCase().trim(), hashPassword(password), Date.now());
+  return getFamily(Number(info.lastInsertRowid))!;
+}
+
+export function getFamily(id: number): FamilyRow | null {
+  return (getDb().prepare("SELECT * FROM families WHERE id = ?").get(id) as FamilyRow) ?? null;
+}
+
+export function getFamilyByEmail(email: string): FamilyRow | null {
+  return (
+    (getDb()
+      .prepare("SELECT * FROM families WHERE email = ?")
+      .get(email.toLowerCase().trim()) as FamilyRow) ?? null
+  );
+}
+
+// Login-Prüfung: gibt die Familie zurück, wenn E-Mail + Passwort stimmen.
+export function verifyFamilyLogin(email: string, password: string): FamilyRow | null {
+  const fam = getFamilyByEmail(email);
+  if (!fam) return null;
+  return verifyPassword(password, fam.password_hash) ? fam : null;
+}
+
+// --- Users (Kinder, immer einer Familie zugeordnet) ---
+
+export function listUsers(familyId: number): UserRow[] {
   return getDb()
-    .prepare("SELECT * FROM users ORDER BY sort ASC, id ASC")
-    .all() as UserRow[];
+    .prepare("SELECT * FROM users WHERE family_id = ? ORDER BY sort ASC, id ASC")
+    .all(familyId) as UserRow[];
 }
 
 export function getUser(id: number): UserRow | null {
   return (getDb().prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow) ?? null;
 }
 
+// Kind nur zurückgeben, wenn es zur angegebenen Familie gehört (Mandanten-Schutz).
+export function getUserInFamily(id: number, familyId: number): UserRow | null {
+  const u = getUser(id);
+  return u && u.family_id === familyId ? u : null;
+}
+
 export function createUser(u: {
+  familyId: number;
   name: string;
   color?: string;
   emoji?: string;
@@ -42,12 +82,17 @@ export function createUser(u: {
 }): UserRow {
   const db = getDb();
   const maxSort =
-    (db.prepare("SELECT MAX(sort) as m FROM users").get() as { m: number | null }).m ?? 0;
+    (
+      db.prepare("SELECT MAX(sort) as m FROM users WHERE family_id = ?").get(u.familyId) as {
+        m: number | null;
+      }
+    ).m ?? 0;
   const info = db
     .prepare(
-      "INSERT INTO users (name, color, emoji, pin_hash, grade, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO users (family_id, name, color, emoji, pin_hash, grade, sort, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .run(
+      u.familyId,
       u.name,
       u.color ?? "sky",
       u.emoji ?? "🙂",
@@ -586,9 +631,15 @@ export function setMeta(key: string, value: string): void {
     .run(key, value);
 }
 
-export function getParentPinHash(): string | null {
-  return getMeta("parent_pin_hash");
+// Eltern-PIN ist jetzt pro Familie (Spalte families.parent_pin_hash).
+export function getParentPinHash(familyId: number): string | null {
+  const row = getDb()
+    .prepare("SELECT parent_pin_hash FROM families WHERE id = ?")
+    .get(familyId) as { parent_pin_hash: string | null } | undefined;
+  return row?.parent_pin_hash ?? null;
 }
-export function setParentPin(pin: string | null): void {
-  setMeta("parent_pin_hash", pin ? hashPin(pin) : "");
+export function setParentPin(familyId: number, pin: string | null): void {
+  getDb()
+    .prepare("UPDATE families SET parent_pin_hash = ? WHERE id = ?")
+    .run(pin ? hashPin(pin) : null, familyId);
 }

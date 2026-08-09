@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listGoals, setGoal, listSubjects, getGoal, type GoalType } from "@/lib/db/repo";
+import { authUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,7 +8,8 @@ export const dynamic = "force-dynamic";
 // GET /api/goals?userId=1 → Ziel pro Fach (Typ + Wert, mit Default).
 export async function GET(req: NextRequest) {
   const userId = Number(req.nextUrl.searchParams.get("userId"));
-  if (!userId) return NextResponse.json({ error: "userId fehlt" }, { status: 400 });
+  const gate = await authUser(req, userId);
+  if (gate instanceof NextResponse) return gate;
   const subjects = listSubjects();
   const goals = subjects.map((s) => {
     const g = getGoal(userId, s.id);
@@ -29,12 +31,15 @@ export async function PUT(req: NextRequest) {
     userId?: number;
     goals?: { subjectId: number; goalType?: GoalType; target?: number; level?: number }[];
   };
-  if (!body.userId || !Array.isArray(body.goals)) {
-    return NextResponse.json({ error: "userId/goals fehlt" }, { status: 400 });
+  const gate = await authUser(req, Number(body.userId));
+  if (gate instanceof NextResponse) return gate;
+  if (!Array.isArray(body.goals)) {
+    return NextResponse.json({ error: "goals fehlt" }, { status: 400 });
   }
+  const userId = Number(body.userId);
   for (const g of body.goals) {
     const type: GoalType = g.goalType === "count" ? "count" : "minutes";
-    setGoal(body.userId, g.subjectId, g.target ?? 0, type, g.level ?? 0);
+    setGoal(userId, g.subjectId, g.target ?? 0, type, g.level ?? 0);
   }
-  return NextResponse.json({ ok: true, goals: listGoals(body.userId) });
+  return NextResponse.json({ ok: true, goals: listGoals(userId) });
 }

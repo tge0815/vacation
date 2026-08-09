@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listUsers, createUser } from "@/lib/db/repo";
 import { publicUser } from "@/lib/serialize";
+import { familyIdFrom, unauthorized } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  return NextResponse.json({ users: listUsers().map(publicUser) });
+export async function GET(req: NextRequest) {
+  const familyId = await familyIdFrom(req);
+  if (!familyId) return unauthorized();
+  return NextResponse.json({ users: listUsers(familyId).map(publicUser) });
 }
 
 export async function POST(req: NextRequest) {
+  const familyId = await familyIdFrom(req);
+  if (!familyId) return unauthorized();
   const body = (await req.json()) as {
     name?: string;
     color?: string;
@@ -21,6 +26,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Name fehlt" }, { status: 400 });
   }
   const user = createUser({
+    familyId,
     name: body.name.trim(),
     color: body.color,
     emoji: body.emoji,

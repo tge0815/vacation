@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { insertAttempt, awardCorrectCoins } from "@/lib/db/repo";
+import { authUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,9 +20,12 @@ export async function POST(req: NextRequest) {
     isCorrect?: boolean;
     durationSec?: number;
   };
-  if (!body.userId || !body.subjectId || typeof body.isCorrect !== "boolean") {
-    return NextResponse.json({ error: "userId/subjectId/isCorrect fehlt" }, { status: 400 });
+  const gate = await authUser(req, Number(body.userId));
+  if (gate instanceof NextResponse) return gate;
+  if (!body.subjectId || typeof body.isCorrect !== "boolean") {
+    return NextResponse.json({ error: "subjectId/isCorrect fehlt" }, { status: 400 });
   }
+  const userId = Number(body.userId);
 
   const exercise = {
     inputMode: body.inputMode ?? "map",
@@ -32,7 +36,7 @@ export async function POST(req: NextRequest) {
   };
 
   insertAttempt({
-    userId: body.userId,
+    userId,
     subjectId: body.subjectId,
     topicId: body.topicId ?? null,
     difficulty: body.difficulty ?? 2,
@@ -45,6 +49,6 @@ export async function POST(req: NextRequest) {
     durationSec: body.durationSec ?? 0,
   });
 
-  const reward = awardCorrectCoins(body.userId);
+  const reward = awardCorrectCoins(userId);
   return NextResponse.json({ ok: true, reward });
 }

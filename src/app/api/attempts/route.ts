@@ -7,6 +7,7 @@ import {
   getTopic,
 } from "@/lib/db/repo";
 import { localDateStr } from "@/lib/date";
+import { authUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +21,8 @@ function sinceDaysAgo(days: number): string {
 // GET /api/attempts?userId=1&days=14&limit=25 → Statistik + detaillierte Historie.
 export async function GET(req: NextRequest) {
   const userId = Number(req.nextUrl.searchParams.get("userId"));
-  if (!userId) return NextResponse.json({ error: "userId fehlt" }, { status: 400 });
+  const gate = await authUser(req, userId);
+  if (gate instanceof NextResponse) return gate;
   const days = Number(req.nextUrl.searchParams.get("days") ?? 14);
   const limit = Number(req.nextUrl.searchParams.get("limit") ?? 25);
 

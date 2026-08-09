@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { warmAll, warmSubject } from "@/lib/ai/pool";
+import { authUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,8 +10,9 @@ export const dynamic = "force-dynamic";
 // antwortet sofort. Ohne subjectId werden alle Fächer mit Tagesziel vorgewärmt.
 export async function POST(req: NextRequest) {
   const body = (await req.json()) as { userId?: number; subjectId?: number };
-  if (!body.userId) return NextResponse.json({ error: "userId fehlt" }, { status: 400 });
-  if (body.subjectId) warmSubject(body.userId, body.subjectId);
-  else warmAll(body.userId);
+  const gate = await authUser(req, Number(body.userId));
+  if (gate instanceof NextResponse) return gate;
+  if (body.subjectId) warmSubject(body.userId!, body.subjectId);
+  else warmAll(body.userId!);
   return NextResponse.json({ ok: true });
 }

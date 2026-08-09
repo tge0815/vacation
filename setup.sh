@@ -124,6 +124,28 @@ docker run --rm \
   alpine sh -c 'rm -rf /dest/* /dest/.[!.]* 2>/dev/null; cp -a /src/. /dest/ && chown -R 1001:1001 /dest' >/dev/null
 log "Auth ins Volume kopiert (UID 1001)"
 
+# ──── 4b. Login-Konfiguration (.env) ──────────────────────────────────
+# docker compose liest .env im Projektordner automatisch für ${VAR}.
+# Wir legen Session-Secret + Einladungscode einmalig an (Zufallswerte).
+step "Login-Konfiguration prüfen"
+touch .env
+gen_secret() { head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
+ensure_env() { # key, value
+  if ! grep -q "^$1=" .env 2>/dev/null; then
+    printf '%s=%s\n' "$1" "$2" >> .env
+    return 0
+  fi
+  return 1
+}
+if ensure_env LEARN_SESSION_SECRET "$(gen_secret)"; then
+  log "Session-Secret erzeugt (.env)"
+fi
+if ensure_env LEARN_INVITE_CODE "$(gen_secret | cut -c1-8)"; then
+  warn "Einladungscode erzeugt. Familien brauchen ihn zur Registrierung:"
+  printf "   ${B}%s${N}\n" "$(grep '^LEARN_INVITE_CODE=' .env | cut -d= -f2)"
+fi
+INVITE_NOW="$(grep '^LEARN_INVITE_CODE=' .env | cut -d= -f2-)"
+
 # ──── 5. Build + Start ────────────────────────────────────────────────
 step "Container bauen + starten"
 docker compose up -d --build
@@ -181,7 +203,12 @@ echo "   http://localhost:3001"
 echo
 echo "Backend: Claude Agent SDK (Max-Plan-Subscription, kein API-Key)"
 echo
-echo "Hinweis Vorlesen: Mikrofon braucht localhost oder HTTPS."
+echo "Login: Beim ersten Öffnen 'Familie registrieren' mit dem Einladungscode:"
+printf "   Einladungscode: ${B}%s${N}\n" "${INVITE_NOW:-siehe .env}"
+echo "   (Bestehende lokale Kinder: Login ${LEARN_DEFAULT_FAMILY_EMAIL:-eltern@local} / ${LEARN_DEFAULT_FAMILY_PASSWORD:-lernen})"
+echo
+echo "Hinweis öffentlicher Server: Unbedingt HTTPS davor (Reverse-Proxy),"
+echo "sonst sind Login-Cookies und Mikrofon (Vorlesen) unsicher/blockiert."
 echo
 echo "Logs live:    docker compose logs -f lernferien"
 echo "Update:       ./setup.sh"

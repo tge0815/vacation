@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listSubjects, getGoal, progressToday, currentStreak } from "@/lib/db/repo";
+import { authUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,7 +8,8 @@ export const dynamic = "force-dynamic";
 // GET /api/progress?userId=1 → Tagesfortschritt pro Fach + Gesamt + Streak.
 export async function GET(req: NextRequest) {
   const userId = Number(req.nextUrl.searchParams.get("userId"));
-  if (!userId) return NextResponse.json({ error: "userId fehlt" }, { status: 400 });
+  const gate = await authUser(req, userId);
+  if (gate instanceof NextResponse) return gate;
 
   const subjects = listSubjects();
   const prog = progressToday(userId);

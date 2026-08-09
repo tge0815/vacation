@@ -3,6 +3,7 @@ import { gradeExercise } from "@/lib/ai/exercises";
 import { tryLocalGrade } from "@/lib/ai/localGrade";
 import { insertAttempt, awardCorrectCoins, recordVocab } from "@/lib/db/repo";
 import { ExerciseSchema, type Exercise } from "@/lib/ai/schemas";
+import { authUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,9 +21,12 @@ export async function POST(req: NextRequest) {
     answer?: string;
     durationSec?: number;
   };
-  if (!body.userId || !body.subjectId || !body.exercise) {
-    return NextResponse.json({ error: "userId/subjectId/exercise fehlt" }, { status: 400 });
+  const gate = await authUser(req, Number(body.userId));
+  if (gate instanceof NextResponse) return gate;
+  if (!body.subjectId || !body.exercise) {
+    return NextResponse.json({ error: "subjectId/exercise fehlt" }, { status: 400 });
   }
+  const userId = Number(body.userId);
 
   const parsed = ExerciseSchema.safeParse(body.exercise);
   if (!parsed.success) {
@@ -44,7 +48,7 @@ export async function POST(req: NextRequest) {
       }));
 
     const attempt = insertAttempt({
-      userId: body.userId,
+      userId,
       subjectId: body.subjectId,
       topicId: body.topicId ?? null,
       difficulty: body.difficulty ?? exercise.difficulty,
@@ -59,10 +63,10 @@ export async function POST(req: NextRequest) {
 
     // Vokabeln fürs Vokabelheft mitschreiben (und Wiederholung ermöglichen).
     if (body.topicKey === "vokabeln") {
-      recordVocab(body.userId, body.subjectId, exercise.question, exercise.solution, grade.isCorrect);
+      recordVocab(userId, body.subjectId, exercise.question, exercise.solution, grade.isCorrect);
     }
 
-    const reward = awardCorrectCoins(body.userId);
+    const reward = awardCorrectCoins(userId);
 
     return NextResponse.json({ grade, attemptId: attempt.id, reward });
   } catch (e) {

@@ -19,8 +19,8 @@ function sinceDaysAgo(days: number): string {
 }
 
 // Baut den Datenkontext für den Eltern-Coach aus der DB.
-function buildContext(): string {
-  const users = listUsers();
+function buildContext(familyId: number): string {
+  const users = listUsers(familyId);
   const subjects = listSubjects();
   const subjName = new Map(subjects.map((s) => [s.id, s.name]));
   const since = sinceDaysAgo(14);
@@ -68,11 +68,12 @@ export type CoachEvent =
   | { kind: "error"; message: string };
 
 export async function* streamParentCoach(opts: {
+  familyId: number;
   userText: string;
   useReasoning?: boolean;
   history?: { role: "user" | "assistant"; content: string }[];
 }): AsyncGenerator<CoachEvent> {
-  const context = buildContext();
+  const context = buildContext(opts.familyId);
   const model = opts.useReasoning ? REASONING_MODEL : DEFAULT_MODEL;
 
   const historyBlock =
