@@ -572,6 +572,18 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       `);
     },
   },
+  {
+    // Für die native Companion-App (Apple Screen Time): markiert, wann eine
+    // bestätigte Bildschirmzeit-Freigabe auf dem Gerät tatsächlich eingelöst
+    // (aktiviert) wurde, damit sie nicht doppelt gewährt wird.
+    name: "023_reward_redeemed",
+    run: (db) => {
+      const cols = db.prepare("PRAGMA table_info(reward_requests)").all() as Array<{ name: string }>;
+      if (!cols.some((c) => c.name === "redeemed_at")) {
+        db.exec("ALTER TABLE reward_requests ADD COLUMN redeemed_at INTEGER");
+      }
+    },
+  },
 ];
 
 // Themen-Beschreibung fürs Vokabel-Training (eigener Lernbereich). Fragt EIN

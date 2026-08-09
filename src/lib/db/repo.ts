@@ -576,6 +576,7 @@ export type RewardRequestRow = {
   status: "pending" | "approved" | "declined";
   created_at: number;
   decided_at: number | null;
+  redeemed_at: number | null;
 };
 
 export type RewardRequestWithChild = RewardRequestRow & {
@@ -760,6 +761,46 @@ export function decideRewardRequest(
     );
   })();
   return { ok: true, coins: user.coins - req.coins };
+}
+
+// --- Für die native Companion-App (Apple Screen Time) ---
+
+// Bestätigte Freigaben, die auf dem Gerät noch NICHT eingelöst (aktiviert)
+// wurden. Die Companion-App holt sich diese, entsperrt Apps entsprechend und
+// meldet sie danach als eingelöst zurück (markRewardsRedeemed).
+export function listApprovedUnredeemed(userId: number): RewardRequestRow[] {
+  return getDb()
+    .prepare(
+      "SELECT * FROM reward_requests WHERE user_id = ? AND status = 'approved' AND redeemed_at IS NULL ORDER BY decided_at",
+    )
+    .all(userId) as RewardRequestRow[];
+}
+
+// Markiert genehmigte Freigaben als auf dem Gerät eingelöst. Nur eigene,
+// genehmigte, noch nicht eingelöste Einträge. Gibt die Anzahl + Minuten zurück.
+export function markRewardsRedeemed(
+  userId: number,
+  ids: number[],
+): { redeemed: number; minutes: number } {
+  if (!ids?.length) return { redeemed: 0, minutes: 0 };
+  const db = getDb();
+  const now = Date.now();
+  const upd = db.prepare(
+    "UPDATE reward_requests SET redeemed_at = ? WHERE id = ? AND user_id = ? AND status = 'approved' AND redeemed_at IS NULL",
+  );
+  let redeemed = 0;
+  let minutes = 0;
+  db.transaction(() => {
+    for (const id of ids) {
+      const row = getRewardRequest(Number(id));
+      const info = upd.run(now, Number(id), userId);
+      if (info.changes > 0) {
+        redeemed++;
+        minutes += row?.minutes ?? 0;
+      }
+    }
+  })();
+  return { redeemed, minutes };
 }
 
 // --- Vokabelheft ---
