@@ -17,6 +17,7 @@ type SpeechRecognitionLike = {
   interimResults: boolean;
   start: () => void;
   stop: () => void;
+  abort?: () => void;
   onresult: ((e: SpeechRecognitionEventLike) => void) | null;
   onerror: ((e: { error?: string }) => void) | null;
   onend: (() => void) | null;
@@ -43,6 +44,8 @@ export function useSpeech(lang = "de-DE") {
   const recRef = useRef<SpeechRecognitionLike | null>(null);
 
   function start() {
+    // Doppel-Start vermeiden (führt sonst zu InvalidStateError).
+    if (recRef.current) return;
     const Ctor = getCtor();
     if (!Ctor) {
       setError("Spracherkennung wird von diesem Browser nicht unterstützt.");
@@ -66,22 +69,44 @@ export function useSpeech(lang = "de-DE") {
     };
     rec.onerror = (ev) => {
       const err = ev.error ?? "unbekannt";
-      setError(
-        err === "not-allowed" || err === "service-not-allowed"
-          ? "Kein Mikrofon-Zugriff. Erlaube das Mikrofon (nur über localhost oder HTTPS möglich)."
-          : `Fehler bei der Spracherkennung: ${err}`,
-      );
+      // "aborted"/"no-speech" sind harmlos (z.B. beim manuellen Stoppen) –
+      // nicht als Fehler anzeigen.
+      if (err !== "aborted" && err !== "no-speech") {
+        setError(
+          err === "not-allowed" || err === "service-not-allowed"
+            ? "Kein Mikrofon-Zugriff. Erlaube das Mikrofon (nur über localhost oder HTTPS möglich)."
+            : `Fehler bei der Spracherkennung: ${err}`,
+        );
+      }
+      recRef.current = null;
       setListening(false);
     };
-    rec.onend = () => setListening(false);
+    rec.onend = () => {
+      recRef.current = null;
+      setListening(false);
+    };
     recRef.current = rec;
-    rec.start();
-    setListening(true);
+    try {
+      rec.start();
+      setListening(true);
+    } catch {
+      recRef.current = null;
+      setListening(false);
+    }
   }
 
   function stop() {
-    recRef.current?.stop();
+    const rec = recRef.current;
+    // Sofort als „nicht mehr aktiv" markieren, damit die UI direkt reagiert –
+    // unabhängig davon, ob onend zuverlässig feuert (iOS/Safari).
+    recRef.current = null;
     setListening(false);
+    try {
+      rec?.stop();
+      rec?.abort?.();
+    } catch {
+      // egal – Zustand ist bereits zurückgesetzt
+    }
   }
 
   return { supported, listening, transcript, error, start, stop, setTranscript };

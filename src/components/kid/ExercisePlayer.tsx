@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Confetti } from "@/components/Confetti";
 import { color } from "@/components/colors";
+import { MathScratchpad } from "./MathScratchpad";
 import { useSpeech } from "./useSpeech";
 import { LoadingView, QueueIndicator } from "./Waiting";
 import type { Exercise } from "@/lib/ai/schemas";
@@ -633,6 +634,7 @@ export function ExercisePlayer({
                   </button>
                 </form>
               )}
+              {gen?.subjectKey === "mathe" && ex.inputMode !== "reading" && <MathScratchpad />}
             </div>
           )}
 
@@ -803,12 +805,13 @@ function ReadingInput({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-center">
         <button
+          type="button"
           onClick={() => (speech.listening ? speech.stop() : speech.start())}
-          className={`inline-flex items-center gap-2 rounded-full px-6 py-4 font-semibold text-white transition ${
-            speech.listening ? "bg-rose-500 animate-wiggle" : colorBg
+          className={`inline-flex items-center gap-2 rounded-full px-8 py-4 text-lg font-semibold text-white transition active:scale-95 ${
+            speech.listening ? "bg-rose-500 animate-rec" : colorBg
           }`}
         >
-          {speech.listening ? <Square size={20} /> : <Mic size={20} />}
+          {speech.listening ? <Square size={22} /> : <Mic size={22} />}
           {speech.listening ? "Stopp" : "Vorlesen starten"}
         </button>
       </div>
