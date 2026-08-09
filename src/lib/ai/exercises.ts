@@ -1,11 +1,12 @@
 import {
   getSubject,
   getTopic,
-  listTopics,
+  listTopicsForFamily,
   recentAttempts,
   recentTopicPerformance,
   dueVocab,
   getGoal,
+  getUser,
 } from "../db/repo";
 import type { SubjectRow, TopicRow, VocabRow } from "../db/sqlite";
 import { runAgentJson, DEFAULT_MODEL, REASONING_MODEL } from "./run";
@@ -68,7 +69,11 @@ export async function generateBatch(opts: {
     chosen = Array.from({ length: count }, () => t);
   } else {
     // Karten-Themen (input_hint 'map') sind client-seitig, nicht KI-generiert.
-    const topics = listTopics(opts.subjectId).filter((t) => t.input_hint !== "map");
+    // Themen-Auswahl ist pro Familie (an/aus im Eltern-Bereich).
+    const familyId = getUser(opts.userId)?.family_id ?? 0;
+    const topics = listTopicsForFamily(opts.subjectId, familyId).filter(
+      (t) => t.input_hint !== "map",
+    );
     if (topics.length === 0) throw new Error("Keine Themen für dieses Fach");
     const offset = recentAttempts({ userId: opts.userId }).length;
     chosen = Array.from({ length: count }, (_, i) => topics[(offset + i) % topics.length]);

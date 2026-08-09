@@ -184,6 +184,39 @@ export function setTopicActive(id: number, active: boolean): void {
   getDb().prepare("UPDATE topics SET active = ? WHERE id = ?").run(active ? 1 : 0, id);
 }
 
+// --- Themen an/aus pro Familie (Override über den globalen Standard) ---
+
+export function setFamilyTopicActive(familyId: number, topicId: number, active: boolean): void {
+  getDb()
+    .prepare(
+      `INSERT INTO family_topic_prefs (family_id, topic_id, active) VALUES (?, ?, ?)
+       ON CONFLICT(family_id, topic_id) DO UPDATE SET active = excluded.active`,
+    )
+    .run(familyId, topicId, active ? 1 : 0);
+}
+
+function familyTopicOverrides(familyId: number): Map<number, boolean> {
+  const rows = getDb()
+    .prepare("SELECT topic_id, active FROM family_topic_prefs WHERE family_id = ?")
+    .all(familyId) as Array<{ topic_id: number; active: number }>;
+  return new Map(rows.map((r) => [r.topic_id, r.active === 1]));
+}
+
+// Themen eines Fachs mit familien-spezifischem active-Status. Ohne Override gilt
+// der globale Standard (topics.active). includeInactive=false filtert auf aktive.
+export function listTopicsForFamily(
+  subjectId: number,
+  familyId: number,
+  includeInactive = false,
+): TopicRow[] {
+  const ov = familyTopicOverrides(familyId);
+  const resolved = listTopics(subjectId, true).map((t) => ({
+    ...t,
+    active: ov.has(t.id) ? (ov.get(t.id) ? 1 : 0) : t.active,
+  }));
+  return includeInactive ? resolved : resolved.filter((t) => t.active === 1);
+}
+
 // --- Goals ---
 
 export type GoalType = "minutes" | "count";

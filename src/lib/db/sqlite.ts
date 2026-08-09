@@ -414,6 +414,19 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       }
     },
   },
+  {
+    // Themen an/aus jetzt pro Familie (statt global). Ohne Eintrag gilt der
+    // globale Standard (topics.active). Ein Override schaltet für eine Familie um.
+    name: "018_family_topic_prefs",
+    sql: `
+      CREATE TABLE IF NOT EXISTS family_topic_prefs (
+        family_id INTEGER NOT NULL,
+        topic_id INTEGER NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (family_id, topic_id)
+      );
+    `,
+  },
 ];
 
 const GEOGRAFIE_TOPICS: Array<{
