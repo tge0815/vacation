@@ -39,7 +39,7 @@ export default function Home() {
       <header className="text-center mb-10">
         <div className="inline-flex items-center gap-2 text-sky-500 mb-2">
           <GraduationCap size={28} />
-          <span className="font-semibold tracking-tight">Ferien-Lerncoach</span>
+          <span className="font-semibold tracking-tight">Lerncoach</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">Wer übt heute?</h1>
         <p className="text-neutral-500 mt-2">Tippe auf ein Kind, um seinen Bereich zu öffnen.</p>

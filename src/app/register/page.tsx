@@ -44,7 +44,7 @@ export default function RegisterPage() {
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 text-sky-500 mb-2">
           <GraduationCap size={28} />
-          <span className="font-semibold tracking-tight">Ferien-Lerncoach</span>
+          <span className="font-semibold tracking-tight">Lerncoach</span>
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Familie registrieren</h1>
         <p className="text-neutral-500 text-sm mt-2">Du brauchst einen Einladungscode.</p>

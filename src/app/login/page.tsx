@@ -44,7 +44,7 @@ export default function LoginPage() {
         <BrandMascot size={168} className="mx-auto drop-shadow-sm" />
         <div className="mt-1 inline-flex items-center gap-2">
           <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-orange-500 via-sky-500 to-violet-500 bg-clip-text text-transparent">
-            Ferien-Lerncoach
+            Lerncoach
           </span>
         </div>
         <h1 className="text-2xl font-semibold tracking-tight mt-2">Anmelden</h1>

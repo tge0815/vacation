@@ -59,6 +59,9 @@ export async function proxy(req: NextRequest) {
 }
 
 // Gate: alles außer Next-Assets und statischen Dateien läuft durch den Proxy.
+// Wichtig: .webmanifest und .js (z.B. /sw.js) müssen frei erreichbar sein –
+// sonst leitet der Gate sie für nicht angemeldete Besucher auf /login um und
+// die PWA-Installation (Manifest/Service Worker) auf iOS/Android schlägt fehl.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|json|txt|woff2?)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|json|txt|woff2?|webmanifest|js)$).*)"],
 };

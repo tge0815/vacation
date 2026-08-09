@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ServiceWorker } from "@/components/ServiceWorker";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ferien-Lerncoach",
+  title: "Lerncoach",
   description: "Täglich ein paar Minuten üben — Deutsch, Mathe & Englisch für die 5. Klasse",
   applicationName: "Lerncoach",
   manifest: "/manifest.webmanifest",
@@ -49,6 +50,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
         <ServiceWorker />
         {children}
+        <InstallPrompt />
       </body>
     </html>
   );

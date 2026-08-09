@@ -1,4 +1,4 @@
-// Minimaler Service Worker für den Ferien-Lerncoach (PWA-Installierbarkeit +
+// Minimaler Service Worker für den Lerncoach (PWA-Installierbarkeit +
 // Offline-Fallback für zuletzt besuchte Seiten/Assets).
 // Bewusst konservativ: API-Aufrufe (auch SSE) werden NIE abgefangen/gecacht.
 const CACHE = "lerncoach-v1";
