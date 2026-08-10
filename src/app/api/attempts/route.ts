@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
 
   const subjects = listSubjects();
   const subjName = new Map(subjects.map((s) => [s.id, s.name]));
+  const subjMeta = new Map(subjects.map((s) => [s.id, { key: s.key, color: s.color, icon: s.icon }]));
 
   const stats = statsSince(userId, sinceDaysAgo(days)).map((st) => ({
     ...st,
@@ -44,10 +45,14 @@ export async function GET(req: NextRequest) {
     try {
       grade = a.grade_json ? JSON.parse(a.grade_json) : null;
     } catch {}
+    const meta = subjMeta.get(a.subject_id);
     return {
       id: a.id,
       date: a.date,
       subjectName: subjName.get(a.subject_id) ?? "?",
+      subjectKey: meta?.key ?? "",
+      color: meta?.color ?? "sky",
+      icon: meta?.icon ?? "BookOpen",
       topicName: a.topic_id ? getTopic(a.topic_id)?.name ?? null : null,
       difficulty: a.difficulty,
       isCorrect: a.is_correct === 1,

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Flame, Loader2, Play, Check, LogOut, Gift } from "lucide-react";
+import { ArrowLeft, Flame, Loader2, Play, Check, LogOut, Gift, History } from "lucide-react";
 import { ProgressRing } from "@/components/ProgressRing";
 import { color } from "@/components/colors";
 import { subjectIcon } from "@/components/subjectIcon";
@@ -93,6 +93,13 @@ export function KidToday({ userId }: { userId: number }) {
           )}
           {user && (
             <>
+              <button
+                onClick={() => router.push(`/kind/${userId}/verlauf`)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-500/10 px-3 py-1.5 text-sm font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-500/20 transition"
+                title="Deine gelösten Aufgaben"
+              >
+                <History size={16} /> Verlauf
+              </button>
               <button
                 onClick={() => router.push(`/kind/${userId}/belohnung`)}
                 className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-3 py-1.5 text-sm font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-500/20 transition"
