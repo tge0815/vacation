@@ -12,6 +12,8 @@ const LESSON_COINS: Record<string, number> = {
   "w1l1": 2,
   "w1l2": 2,
   "w1l3": 3,
+  "w2l1": 3,
+  "w2l2": 4,
 };
 
 // POST { userId, lessonKey } → Lektion abschließen (Münzen nur beim 1. Mal).

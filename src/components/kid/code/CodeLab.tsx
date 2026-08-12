@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Play, RotateCcw, Loader2, Check, Lock, Gamepad2, Lightbulb, Boxes } from "lucide-react";
 import { Confetti } from "@/components/Confetti";
-import { WORLD1, type Lesson } from "./lessons";
+import { WORLD1, WORLD2, type Lesson } from "./lessons";
 import { Basics } from "./Basics";
+import { GameLessonView } from "./GameLessonView";
 
 const CELL = 60;
 
@@ -52,6 +53,8 @@ export function CodeLab({ userId }: { userId: number }) {
   const [coins, setCoins] = useState(0);
   const [lessonKey, setLessonKey] = useState<string | null>(null);
 
+  const [unlocked, setUnlocked] = useState<boolean | null>(null);
+
   const load = useCallback(() => {
     fetch(`/api/code/progress?userId=${userId}`)
       .then((r) => r.json())
@@ -63,9 +66,19 @@ export function CodeLab({ userId }: { userId: number }) {
   }, [userId]);
   useEffect(() => {
     load();
-  }, [load]);
+    // Freischaltung: erst nutzbar, wenn die Tagesziele erreicht sind.
+    fetch(`/api/progress?userId=${userId}`)
+      .then((r) => r.json())
+      .then((p: { subjectsWithGoal?: number; subjectsReached?: number }) => {
+        const g = p.subjectsWithGoal ?? 0;
+        const reached = p.subjectsReached ?? 0;
+        setUnlocked(g === 0 || reached >= g);
+      })
+      .catch(() => setUnlocked(true));
+  }, [load, userId]);
 
   const lesson = WORLD1.find((l) => l.key === lessonKey) ?? null;
+  const gameLesson = WORLD2.find((l) => l.key === lessonKey) ?? null;
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 flex-1">
@@ -81,13 +94,45 @@ export function CodeLab({ userId }: { userId: number }) {
         </span>
       </header>
 
-      {lessonKey === "basics" ? (
+      {unlocked === null ? (
+        <div className="flex justify-center py-20 text-neutral-400">
+          <Loader2 className="animate-spin" />
+        </div>
+      ) : !unlocked ? (
+        <div className="text-center py-16">
+          <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-neutral-200 dark:bg-neutral-800 text-neutral-400 mb-4">
+            <Lock size={30} />
+          </div>
+          <h1 className="text-xl font-semibold">Noch abgeschlossen</h1>
+          <p className="text-neutral-500 mt-2 max-w-sm mx-auto">
+            Die Spiele-Werkstatt schaltet sich frei, sobald du heute alle Lern-Tagesziele geschafft
+            hast. Erst üben – dann coden! 🦊
+          </p>
+          <button
+            onClick={() => router.push(`/kind/${userId}`)}
+            className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-violet-500 text-white px-4 py-2 font-semibold hover:opacity-90"
+          >
+            Zu den Übungen
+          </button>
+        </div>
+      ) : lessonKey === "basics" ? (
         <Basics
           userId={userId}
           alreadyDone={done.includes("basics")}
           onCompleted={(newCoins) => {
             setCoins(newCoins);
             setDone((d) => (d.includes("basics") ? d : [...d, "basics"]));
+          }}
+        />
+      ) : gameLesson ? (
+        <GameLessonView
+          userId={userId}
+          lesson={gameLesson}
+          alreadyDone={done.includes(gameLesson.key)}
+          onOpen={setLessonKey}
+          onCompleted={(newCoins) => {
+            setCoins(newCoins);
+            setDone((d) => (d.includes(gameLesson.key) ? d : [...d, gameLesson.key]));
           }}
         />
       ) : lesson ? (
@@ -117,10 +162,12 @@ function Home({ done, onOpen }: { done: string[]; onOpen: (k: string) => void })
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Spiele-Werkstatt</h1>
         <p className="text-neutral-500 mt-1 text-sm">
-          Welt 1: Programmiere den Fuchs. Du schreibst echten Code – und siehst sofort, was passiert.
+          Programmiere den Fuchs und baue dein erstes Spiel. Du schreibst echten Code – und siehst
+          sofort, was passiert.
         </p>
       </div>
-      <div className="space-y-3">
+
+      <div className="space-y-8">
         <button
           onClick={() => onOpen("basics")}
           className="w-full flex items-center gap-3 rounded-2xl border p-4 text-left transition bg-white dark:bg-neutral-900 border-black/[0.06] dark:border-white/[0.06] hover:shadow-md hover:-translate-y-0.5"
@@ -141,9 +188,31 @@ function Home({ done, onOpen }: { done: string[]; onOpen: (k: string) => void })
           <span className="text-xs font-semibold text-amber-500">🪙 3</span>
         </button>
 
-        {WORLD1.map((l, i) => {
+        <World title="Welt 1 · Programmieren" lessons={WORLD1} done={done} onOpen={onOpen} />
+        <World title="Welt 2 · Dein erstes Spiel" lessons={WORLD2} done={done} onOpen={onOpen} />
+      </div>
+    </>
+  );
+}
+
+function World({
+  title,
+  lessons,
+  done,
+  onOpen,
+}: {
+  title: string;
+  lessons: { key: string; title: string; goal: string; coins: number }[];
+  done: string[];
+  onOpen: (k: string) => void;
+}) {
+  return (
+    <div>
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400 mb-2">{title}</h2>
+      <div className="space-y-3">
+        {lessons.map((l, i) => {
           const isDone = done.includes(l.key);
-          const locked = i > 0 && !done.includes(WORLD1[i - 1].key);
+          const locked = i > 0 && !done.includes(lessons[i - 1].key);
           return (
             <button
               key={l.key}
@@ -175,7 +244,7 @@ function Home({ done, onOpen }: { done: string[]; onOpen: (k: string) => void })
           );
         })}
       </div>
-    </>
+    </div>
   );
 }
 

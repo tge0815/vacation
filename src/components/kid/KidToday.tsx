@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Flame, Loader2, Play, Check, LogOut, Gift, History, Gamepad2 } from "lucide-react";
+import { ArrowLeft, Flame, Loader2, Play, Check, LogOut, Gift, History, Gamepad2, Lock } from "lucide-react";
 import { ProgressRing } from "@/components/ProgressRing";
 import { color } from "@/components/colors";
 import { subjectIcon } from "@/components/subjectIcon";
@@ -66,6 +66,9 @@ export function KidToday({ userId }: { userId: number }) {
   const totalGoal = prog?.subjectsWithGoal ?? 0;
   const totalReached = prog?.subjectsReached ?? 0;
   const allDone = totalGoal > 0 && totalReached >= totalGoal;
+  // Spiele-Werkstatt ist sichtbar, aber erst nutzbar, wenn die Tagesziele
+  // erreicht sind (oder gar keine Ziele gesetzt sind).
+  const werkstattUnlocked = totalGoal === 0 || allDone;
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 flex-1">
@@ -152,20 +155,40 @@ export function KidToday({ userId }: { userId: number }) {
         </div>
       )}
 
-      {/* Spiele-Werkstatt: die Kür (Programmieren lernen) */}
-      <button
-        onClick={() => router.push(`/kind/${userId}/werkstatt`)}
-        className="w-full mb-6 flex items-center gap-4 rounded-2xl p-4 text-left text-white bg-gradient-to-r from-violet-500 to-indigo-500 hover:opacity-95 active:scale-[0.99] transition"
-      >
-        <span className="shrink-0 size-12 rounded-xl bg-white/20 flex items-center justify-center">
-          <Gamepad2 size={26} />
-        </span>
-        <span className="flex-1">
-          <span className="block font-semibold">Spiele-Werkstatt</span>
-          <span className="block text-sm text-white/80">Programmiere den Fuchs – Welt 1</span>
-        </span>
-        <span className="text-2xl">🦊</span>
-      </button>
+      {/* Spiele-Werkstatt: die Kür – erst nach den Tageszielen freigeschaltet */}
+      {werkstattUnlocked ? (
+        <button
+          onClick={() => router.push(`/kind/${userId}/werkstatt`)}
+          className="w-full mb-6 flex items-center gap-4 rounded-2xl p-4 text-left text-white bg-gradient-to-r from-violet-500 to-indigo-500 hover:opacity-95 active:scale-[0.99] transition"
+        >
+          <span className="shrink-0 size-12 rounded-xl bg-white/20 flex items-center justify-center">
+            <Gamepad2 size={26} />
+          </span>
+          <span className="flex-1">
+            <span className="block font-semibold">Spiele-Werkstatt</span>
+            <span className="block text-sm text-white/80">Programmiere den Fuchs & baue ein Spiel</span>
+          </span>
+          <span className="text-2xl">🦊</span>
+        </button>
+      ) : (
+        <div
+          className="w-full mb-6 flex items-center gap-4 rounded-2xl p-4 bg-neutral-100 dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06]"
+          title="Erst alle Tagesziele schaffen"
+        >
+          <span className="shrink-0 size-12 rounded-xl bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-neutral-400">
+            <Lock size={22} />
+          </span>
+          <span className="flex-1">
+            <span className="block font-semibold text-neutral-600 dark:text-neutral-300">
+              Spiele-Werkstatt
+            </span>
+            <span className="block text-sm text-neutral-500">
+              Erst alle Tagesziele schaffen ({totalReached}/{totalGoal} Fächer) – dann freigeschaltet 🔓
+            </span>
+          </span>
+          <span className="text-2xl grayscale opacity-60">🦊</span>
+        </div>
+      )}
 
       {!prog ? (
         <div className="flex justify-center py-16 text-neutral-400">

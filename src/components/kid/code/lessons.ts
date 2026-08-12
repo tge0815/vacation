@@ -69,3 +69,71 @@ export const WORLD1: Lesson[] = [
     coins: 3,
   },
 ];
+
+// Welt 2: der echte Game-Loop. Der Fuchs wird LIVE gesteuert – onUpdate() läuft
+// in jedem Frame, taste(...) sagt, welche Taste gedrückt ist.
+export type GameLesson = {
+  key: string;
+  title: string;
+  learn: string;
+  goal: string;
+  cols: number;
+  rows: number;
+  fox: Cell;
+  targets: Cell[]; // einzusammeln
+  targetIcon: string; // ⭐ oder 🪙
+  timeLimit?: number; // Sekunden
+  starter: string;
+  hint: string;
+  bridgeJs: string;
+  bridgeCs: string;
+  coins: number;
+};
+
+export const WORLD2: GameLesson[] = [
+  {
+    key: "w2l1",
+    title: "Steuere den Fuchs",
+    learn:
+      "onUpdate(() => { ... }) läuft in JEDEM Bild (Frame). taste(\"rechts\") ist wahr, solange die Taste gedrückt ist.",
+    goal: "Steuere den Fuchs mit den Pfeiltasten zum Stern ⭐.",
+    cols: 7,
+    rows: 5,
+    fox: { x: 0, y: 2 },
+    targets: [{ x: 6, y: 2 }],
+    targetIcon: "⭐",
+    starter:
+      'onUpdate(() => {\n  if (taste("rechts")) fuchs.x += 0.15\n  // Tipp: füge links, hoch und runter hinzu!\n})\n',
+    hint: 'Nutze taste("links"), taste("hoch"), taste("runter") und ändere fuchs.x bzw. fuchs.y.',
+    bridgeJs: 'if (taste("rechts")) fuchs.x += 0.15',
+    bridgeCs:
+      "if (Input.GetKey(KeyCode.RightArrow))\n    transform.position += Vector3.right * speed * Time.deltaTime;",
+    coins: 3,
+  },
+  {
+    key: "w2l2",
+    title: "Sammle alle Münzen",
+    learn: "Jetzt ein echtes Mini-Spiel: sammle alle Münzen ein, bevor die Zeit abläuft!",
+    goal: "Sammle alle 🪙 mit den Pfeiltasten ein.",
+    cols: 8,
+    rows: 6,
+    fox: { x: 0, y: 0 },
+    targets: [
+      { x: 7, y: 1 },
+      { x: 3, y: 4 },
+      { x: 6, y: 5 },
+      { x: 1, y: 3 },
+      { x: 5, y: 0 },
+    ],
+    targetIcon: "🪙",
+    timeLimit: 25,
+    starter:
+      'onUpdate(() => {\n  if (taste("rechts")) fuchs.x += 0.15\n  if (taste("links"))  fuchs.x -= 0.15\n  if (taste("hoch"))   fuchs.y -= 0.15\n  if (taste("runter")) fuchs.y += 0.15\n})\n',
+    hint: "Mach den Fuchs schneller: erhöhe 0.15 auf 0.22. Plane eine clevere Route zu allen Münzen.",
+    bridgeJs: 'if (taste("hoch")) fuchs.y -= 0.15',
+    bridgeCs:
+      "if (Input.GetKey(KeyCode.UpArrow))\n    transform.position += Vector3.up * speed * Time.deltaTime;",
+    coins: 4,
+  },
+];
+
