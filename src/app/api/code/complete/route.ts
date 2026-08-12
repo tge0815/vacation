@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 // Bekannte Lektionen + ihre Münz-Belohnung (serverseitig, nicht dem Client
 // vertrauen). So kann eine Lektion nicht beliebig oft Münzen bringen.
 const LESSON_COINS: Record<string, number> = {
+  "basics": 3,
   "w1l1": 2,
   "w1l2": 2,
   "w1l3": 3,

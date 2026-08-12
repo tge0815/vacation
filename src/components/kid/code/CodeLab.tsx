@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Play, RotateCcw, Loader2, Check, Lock, Gamepad2, Lightbulb } from "lucide-react";
+import { ArrowLeft, Play, RotateCcw, Loader2, Check, Lock, Gamepad2, Lightbulb, Boxes } from "lucide-react";
 import { Confetti } from "@/components/Confetti";
 import { WORLD1, type Lesson } from "./lessons";
+import { Basics } from "./Basics";
 
 const CELL = 60;
 
@@ -70,17 +71,26 @@ export function CodeLab({ userId }: { userId: number }) {
     <main className="mx-auto w-full max-w-3xl px-4 py-8 flex-1">
       <header className="flex items-center justify-between mb-6">
         <button
-          onClick={() => (lesson ? setLessonKey(null) : router.push(`/kind/${userId}`))}
+          onClick={() => (lessonKey ? setLessonKey(null) : router.push(`/kind/${userId}`))}
           className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
         >
-          <ArrowLeft size={16} /> {lesson ? "Übersicht" : "Zurück"}
+          <ArrowLeft size={16} /> {lessonKey ? "Übersicht" : "Zurück"}
         </button>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400">
           🪙 {coins}
         </span>
       </header>
 
-      {lesson ? (
+      {lessonKey === "basics" ? (
+        <Basics
+          userId={userId}
+          alreadyDone={done.includes("basics")}
+          onCompleted={(newCoins) => {
+            setCoins(newCoins);
+            setDone((d) => (d.includes("basics") ? d : [...d, "basics"]));
+          }}
+        />
+      ) : lesson ? (
         <LessonView
           userId={userId}
           lesson={lesson}
@@ -111,6 +121,26 @@ function Home({ done, onOpen }: { done: string[]; onOpen: (k: string) => void })
         </p>
       </div>
       <div className="space-y-3">
+        <button
+          onClick={() => onOpen("basics")}
+          className="w-full flex items-center gap-3 rounded-2xl border p-4 text-left transition bg-white dark:bg-neutral-900 border-black/[0.06] dark:border-white/[0.06] hover:shadow-md hover:-translate-y-0.5"
+        >
+          <span
+            className={`shrink-0 size-10 rounded-xl flex items-center justify-center text-white ${
+              done.includes("basics") ? "bg-emerald-500" : "bg-sky-500"
+            }`}
+          >
+            {done.includes("basics") ? <Check size={20} /> : <Boxes size={20} />}
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold">Grundlagen: Begriffe</div>
+            <div className="text-xs text-neutral-500 truncate">
+              GameObject, Modell, Textur, Skin … zum Anfassen
+            </div>
+          </div>
+          <span className="text-xs font-semibold text-amber-500">🪙 3</span>
+        </button>
+
         {WORLD1.map((l, i) => {
           const isDone = done.includes(l.key);
           const locked = i > 0 && !done.includes(WORLD1[i - 1].key);
