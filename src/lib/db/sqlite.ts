@@ -584,6 +584,20 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       }
     },
   },
+  {
+    // Spiele-Werkstatt: abgeschlossene Programmier-Lektionen pro Kind.
+    name: "024_code_progress",
+    run: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS code_progress (
+          user_id INTEGER NOT NULL,
+          lesson_key TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          PRIMARY KEY (user_id, lesson_key)
+        );
+      `);
+    },
+  },
 ];
 
 // Themen-Beschreibung fürs Vokabel-Training (eigener Lernbereich). Fragt EIN

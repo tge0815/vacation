@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Flame, Loader2, Play, Check, LogOut, Gift, History } from "lucide-react";
+import { ArrowLeft, Flame, Loader2, Play, Check, LogOut, Gift, History, Gamepad2 } from "lucide-react";
 import { ProgressRing } from "@/components/ProgressRing";
 import { color } from "@/components/colors";
 import { subjectIcon } from "@/components/subjectIcon";
@@ -151,6 +151,21 @@ export function KidToday({ userId }: { userId: number }) {
           </div>
         </div>
       )}
+
+      {/* Spiele-Werkstatt: die Kür (Programmieren lernen) */}
+      <button
+        onClick={() => router.push(`/kind/${userId}/werkstatt`)}
+        className="w-full mb-6 flex items-center gap-4 rounded-2xl p-4 text-left text-white bg-gradient-to-r from-violet-500 to-indigo-500 hover:opacity-95 active:scale-[0.99] transition"
+      >
+        <span className="shrink-0 size-12 rounded-xl bg-white/20 flex items-center justify-center">
+          <Gamepad2 size={26} />
+        </span>
+        <span className="flex-1">
+          <span className="block font-semibold">Spiele-Werkstatt</span>
+          <span className="block text-sm text-white/80">Programmiere den Fuchs – Welt 1</span>
+        </span>
+        <span className="text-2xl">🦊</span>
+      </button>
 
       {!prog ? (
         <div className="flex justify-center py-16 text-neutral-400">
