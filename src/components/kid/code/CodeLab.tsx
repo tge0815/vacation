@@ -2,16 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Play, RotateCcw, Loader2, Check, Lock, Gamepad2, Lightbulb, Boxes } from "lucide-react";
+import { ArrowLeft, Play, RotateCcw, Loader2, Check, Lock, Gamepad2, Boxes } from "lucide-react";
 import { Confetti } from "@/components/Confetti";
-import { WORLD1, WORLD2, type Lesson } from "./lessons";
+import { WORLDS, lessonMeta, findSeq, findGame, type SeqLesson } from "./lessons";
 import { Basics } from "./Basics";
 import { GameLessonView } from "./GameLessonView";
+import { HelpPanel, ExplainBox } from "./HelpPanel";
+import { NextButton, UnityBridge } from "./LessonChrome";
 
 const CELL = 60;
 
-// Der Kind-Code läuft in einem Web-Worker (abgesichert + per Timeout gegen
-// Endlosschleifen). Er sammelt nur Bewegungs-Schritte und schickt sie zurück.
+// Sequenz-Engine (Welt 1): Kind-Code sammelt Bewegungs-Schritte im Web-Worker.
 const WORKER_SRC = `
 self.onmessage = (e) => {
   const code = e.data;
@@ -19,29 +20,16 @@ self.onmessage = (e) => {
   const MAX = 600;
   function push(dx, dy, n) {
     n = Math.floor(n) || 0;
-    for (let i = 0; i < n; i++) {
-      if (steps.length >= MAX) throw new Error("Puh, das sind zu viele Schritte!");
-      steps.push({ dx: dx, dy: dy });
-    }
+    for (let i = 0; i < n; i++) { if (steps.length >= MAX) throw new Error("Puh, zu viele Schritte!"); steps.push({ dx: dx, dy: dy }); }
   }
-  const fuchs = {
-    rechts: (n) => push(1, 0, n),
-    links: (n) => push(-1, 0, n),
-    hoch: (n) => push(0, -1, n),
-    runter: (n) => push(0, 1, n),
-  };
+  const fuchs = { rechts:(n)=>push(1,0,n), links:(n)=>push(-1,0,n), hoch:(n)=>push(0,-1,n), runter:(n)=>push(0,1,n) };
   function wiederhole(n, fn) {
     n = Math.min(Math.max(0, Math.floor(n) || 0), 200);
     if (typeof fn !== "function") throw new Error("wiederhole braucht eine Funktion: wiederhole(3, () => { ... })");
     for (let i = 0; i < n; i++) fn();
   }
-  try {
-    const f = new Function("fuchs", "wiederhole", code);
-    f(fuchs, wiederhole);
-    self.postMessage({ ok: true, steps: steps });
-  } catch (err) {
-    self.postMessage({ ok: false, error: String((err && err.message) || err) });
-  }
+  try { new Function("fuchs", "wiederhole", code)(fuchs, wiederhole); self.postMessage({ ok: true, steps: steps }); }
+  catch (err) { self.postMessage({ ok: false, error: String((err && err.message) || err) }); }
 };
 `;
 
@@ -52,7 +40,6 @@ export function CodeLab({ userId }: { userId: number }) {
   const [done, setDone] = useState<string[]>([]);
   const [coins, setCoins] = useState(0);
   const [lessonKey, setLessonKey] = useState<string | null>(null);
-
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
 
   const load = useCallback(() => {
@@ -66,7 +53,6 @@ export function CodeLab({ userId }: { userId: number }) {
   }, [userId]);
   useEffect(() => {
     load();
-    // Freischaltung: erst nutzbar, wenn die Tagesziele erreicht sind.
     fetch(`/api/progress?userId=${userId}`)
       .then((r) => r.json())
       .then((p: { subjectsWithGoal?: number; subjectsReached?: number }) => {
@@ -77,8 +63,13 @@ export function CodeLab({ userId }: { userId: number }) {
       .catch(() => setUnlocked(true));
   }, [load, userId]);
 
-  const lesson = WORLD1.find((l) => l.key === lessonKey) ?? null;
-  const gameLesson = WORLD2.find((l) => l.key === lessonKey) ?? null;
+  const seq = lessonKey ? findSeq(lessonKey) : undefined;
+  const game = lessonKey ? findGame(lessonKey) : undefined;
+
+  function markDone(key: string, newCoins: number) {
+    setCoins(newCoins);
+    setDone((d) => (d.includes(key) ? d : [...d, key]));
+  }
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 flex-1">
@@ -119,32 +110,23 @@ export function CodeLab({ userId }: { userId: number }) {
         <Basics
           userId={userId}
           alreadyDone={done.includes("basics")}
-          onCompleted={(newCoins) => {
-            setCoins(newCoins);
-            setDone((d) => (d.includes("basics") ? d : [...d, "basics"]));
-          }}
+          onCompleted={(c) => markDone("basics", c)}
         />
-      ) : gameLesson ? (
+      ) : game ? (
         <GameLessonView
           userId={userId}
-          lesson={gameLesson}
-          alreadyDone={done.includes(gameLesson.key)}
+          lesson={game}
+          alreadyDone={done.includes(game.key)}
           onOpen={setLessonKey}
-          onCompleted={(newCoins) => {
-            setCoins(newCoins);
-            setDone((d) => (d.includes(gameLesson.key) ? d : [...d, gameLesson.key]));
-          }}
+          onCompleted={(c) => markDone(game.key, c)}
         />
-      ) : lesson ? (
-        <LessonView
+      ) : seq ? (
+        <SeqLessonView
           userId={userId}
-          lesson={lesson}
-          alreadyDone={done.includes(lesson.key)}
+          lesson={seq}
+          alreadyDone={done.includes(seq.key)}
           onOpen={setLessonKey}
-          onCompleted={(newCoins) => {
-            setCoins(newCoins);
-            setDone((d) => (d.includes(lesson.key) ? d : [...d, lesson.key]));
-          }}
+          onCompleted={(c) => markDone(seq.key, c)}
         />
       ) : (
         <Home done={done} onOpen={setLessonKey} />
@@ -162,7 +144,7 @@ function Home({ done, onOpen }: { done: string[]; onOpen: (k: string) => void })
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Spiele-Werkstatt</h1>
         <p className="text-neutral-500 mt-1 text-sm">
-          Programmiere den Fuchs und baue dein erstes Spiel. Du schreibst echten Code – und siehst
+          In 10 Welten vom ersten Befehl zum eigenen Spiel. Du schreibst echten Code – und siehst
           sofort, was passiert.
         </p>
       </div>
@@ -188,67 +170,60 @@ function Home({ done, onOpen }: { done: string[]; onOpen: (k: string) => void })
           <span className="text-xs font-semibold text-amber-500">🪙 3</span>
         </button>
 
-        <World title="Welt 1 · Programmieren" lessons={WORLD1} done={done} onOpen={onOpen} />
-        <World title="Welt 2 · Dein erstes Spiel" lessons={WORLD2} done={done} onOpen={onOpen} />
+        {WORLDS.map((world, wi) => {
+          const prev = WORLDS[wi - 1];
+          const worldUnlocked = wi === 0 || (prev?.keys.every((k) => done.includes(k)) ?? true);
+          return (
+            <div key={world.n}>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400 mb-2 flex items-center gap-2">
+                {world.title}
+                {!worldUnlocked && <Lock size={12} />}
+              </h2>
+              <div className="space-y-3">
+                {world.keys.map((key, i) => {
+                  const meta = lessonMeta(key)!;
+                  const isDone = done.includes(key);
+                  const locked = !worldUnlocked || (i > 0 && !done.includes(world.keys[i - 1]));
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => !locked && onOpen(key)}
+                      disabled={locked}
+                      className={`w-full flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
+                        locked
+                          ? "bg-neutral-100 dark:bg-neutral-900/50 border-transparent opacity-60 cursor-not-allowed"
+                          : "bg-white dark:bg-neutral-900 border-black/[0.06] dark:border-white/[0.06] hover:shadow-md hover:-translate-y-0.5"
+                      }`}
+                    >
+                      <span
+                        className={`shrink-0 size-10 rounded-xl flex items-center justify-center font-bold text-white ${
+                          isDone ? "bg-emerald-500" : "bg-violet-500"
+                        }`}
+                      >
+                        {isDone ? <Check size={20} /> : i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold">{meta.title}</div>
+                        <div className="text-xs text-neutral-500 truncate">{meta.goal}</div>
+                      </div>
+                      {locked ? (
+                        <Lock size={18} className="text-neutral-400" />
+                      ) : (
+                        <span className="text-xs font-semibold text-amber-500">🪙 {meta.coins}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </>
   );
 }
 
-function World({
-  title,
-  lessons,
-  done,
-  onOpen,
-}: {
-  title: string;
-  lessons: { key: string; title: string; goal: string; coins: number }[];
-  done: string[];
-  onOpen: (k: string) => void;
-}) {
-  return (
-    <div>
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-400 mb-2">{title}</h2>
-      <div className="space-y-3">
-        {lessons.map((l, i) => {
-          const isDone = done.includes(l.key);
-          const locked = i > 0 && !done.includes(lessons[i - 1].key);
-          return (
-            <button
-              key={l.key}
-              onClick={() => !locked && onOpen(l.key)}
-              disabled={locked}
-              className={`w-full flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
-                locked
-                  ? "bg-neutral-100 dark:bg-neutral-900/50 border-transparent opacity-60 cursor-not-allowed"
-                  : "bg-white dark:bg-neutral-900 border-black/[0.06] dark:border-white/[0.06] hover:shadow-md hover:-translate-y-0.5"
-              }`}
-            >
-              <span
-                className={`shrink-0 size-10 rounded-xl flex items-center justify-center font-bold text-white ${
-                  isDone ? "bg-emerald-500" : "bg-violet-500"
-                }`}
-              >
-                {isDone ? <Check size={20} /> : i + 1}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold">{l.title}</div>
-                <div className="text-xs text-neutral-500 truncate">{l.goal}</div>
-              </div>
-              {locked ? (
-                <Lock size={18} className="text-neutral-400" />
-              ) : (
-                <span className="text-xs font-semibold text-amber-500">🪙 {l.coins}</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function LessonView({
+function SeqLessonView({
   userId,
   lesson,
   alreadyDone,
@@ -256,7 +231,7 @@ function LessonView({
   onCompleted,
 }: {
   userId: number;
-  lesson: Lesson;
+  lesson: SeqLesson;
   alreadyDone: boolean;
   onOpen: (k: string) => void;
   onCompleted: (coins: number) => void;
@@ -265,14 +240,12 @@ function LessonView({
   const [code, setCode] = useState(lesson.starter);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
-  const [showHint, setShowHint] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const foxRef = useRef({ ...lesson.fox });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const workerRef = useRef<Worker | null>(null);
 
-  // Code laden (gespeicherter Stand oder Starter) + Szene zeichnen.
   useEffect(() => {
     let saved: string | null = null;
     try {
@@ -282,8 +255,6 @@ function LessonView({
     foxRef.current = { ...lesson.fox };
     setStatus("idle");
     setMessage(null);
-    setShowHint(false);
-    // nach dem Setzen der Canvas-Größe zeichnen
     requestAnimationFrame(draw);
     return () => cleanup();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -306,7 +277,6 @@ function LessonView({
     const W = lesson.cols * CELL;
     const H = lesson.rows * CELL;
     ctx.clearRect(0, 0, W, H);
-    // Wiese + Raster
     ctx.fillStyle = "#eaf6ea";
     ctx.fillRect(0, 0, W, H);
     ctx.strokeStyle = "#c3dcc3";
@@ -323,9 +293,6 @@ function LessonView({
       ctx.lineTo(W, y * CELL);
       ctx.stroke();
     }
-    // Wände
-    ctx.fillStyle = "#94a3b8";
-    for (const w of lesson.walls ?? []) ctx.fillRect(w.x * CELL + 4, w.y * CELL + 4, CELL - 8, CELL - 8);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = `${Math.floor(CELL * 0.6)}px system-ui, sans-serif`;
@@ -354,10 +321,8 @@ function LessonView({
     timerRef.current = setInterval(() => {
       if (i >= steps.length) {
         cleanup();
-        // Ziel erreicht?
-        if (foxRef.current.x === lesson.star.x && foxRef.current.y === lesson.star.y) {
-          win();
-        } else {
+        if (foxRef.current.x === lesson.star.x && foxRef.current.y === lesson.star.y) win();
+        else {
           setStatus("fail");
           setMessage("Fast! Der Fuchs steht noch nicht auf dem Stern. Schau nochmal auf die Zahlen. 🔎");
         }
@@ -372,12 +337,6 @@ function LessonView({
         setMessage("Autsch! Der Fuchs ist vom Feld gefallen. Versuch's nochmal. 🍂");
         return;
       }
-      if ((lesson.walls ?? []).some((w) => w.x === nx && w.y === ny)) {
-        cleanup();
-        setStatus("fail");
-        setMessage("Da ist eine Wand! 🧱 Nimm einen anderen Weg.");
-        return;
-      }
       foxRef.current = { x: nx, y: ny };
       draw();
     }, 170);
@@ -389,7 +348,6 @@ function LessonView({
     draw();
     setStatus("running");
     setMessage(null);
-
     const blob = new Blob([WORKER_SRC], { type: "application/javascript" });
     const worker = new Worker(URL.createObjectURL(blob));
     workerRef.current = worker;
@@ -398,7 +356,6 @@ function LessonView({
       setStatus("error");
       setMessage("Das hat zu lange gedauert – vielleicht eine Endlosschleife? 🌀");
     }, 1500);
-
     worker.onmessage = (e: MessageEvent) => {
       clearTimeout(timeout);
       const d = e.data as { ok: boolean; steps?: { dx: number; dy: number }[]; error?: string };
@@ -428,7 +385,7 @@ function LessonView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, lessonKey: lesson.key }),
       });
-      const d = (await res.json()) as { coins?: number; awarded?: boolean };
+      const d = (await res.json()) as { coins?: number };
       if (typeof d.coins === "number") onCompleted(d.coins);
     } catch {}
   }
@@ -446,20 +403,17 @@ function LessonView({
     }
   }
 
-  const win_ = status === "win";
-
   return (
     <div>
-      {win_ && <Confetti />}
-      <div className="mb-4">
+      {status === "win" && <Confetti />}
+      <div className="mb-3">
         <h1 className="text-xl font-semibold">{lesson.title}</h1>
-        <p className="text-sm text-neutral-500 mt-1">{lesson.learn}</p>
-        <p className="mt-2 inline-flex items-center gap-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-300 px-3 py-1.5 text-sm font-medium">
+        <p className="mt-1 inline-flex items-center gap-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-300 px-3 py-1.5 text-sm font-medium">
           🎯 {lesson.goal}
         </p>
       </div>
+      <ExplainBox text={lesson.explain} />
 
-      {/* Spielfeld */}
       <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-neutral-900 p-3 mb-3 flex justify-center">
         <canvas
           ref={canvasRef}
@@ -470,15 +424,11 @@ function LessonView({
         />
       </div>
 
-      {/* Code-Editor */}
       <div className="rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06]">
         <div className="flex items-center justify-between bg-neutral-900 px-3 py-2">
           <span className="text-xs font-semibold text-neutral-400">DEIN CODE</span>
           <div className="flex gap-2">
-            <button
-              onClick={reset}
-              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-neutral-300 hover:bg-neutral-800"
-            >
+            <button onClick={reset} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-neutral-300 hover:bg-neutral-800">
               <RotateCcw size={13} /> Zurücksetzen
             </button>
             <button
@@ -501,7 +451,6 @@ function LessonView({
         />
       </div>
 
-      {/* Rückmeldung */}
       {message && (
         <p
           className={`mt-3 rounded-xl px-4 py-2.5 text-sm font-medium ${
@@ -517,13 +466,8 @@ function LessonView({
         </p>
       )}
 
-      {status === "win" && (
-        <div className="mt-3 flex justify-end">
-          <NextButton lessonKey={lesson.key} onOpen={onOpen} />
-        </div>
-      )}
+      {status === "win" && <NextButton lessonKey={lesson.key} onOpen={onOpen} />}
 
-      {/* Hilfe: Spickzettel, Tipp, Unity-Brücke */}
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-neutral-50 dark:bg-neutral-900/50 p-4 text-sm">
           <div className="font-semibold mb-2">🧰 Deine Befehle</div>
@@ -532,51 +476,16 @@ function LessonView({
             <li>fuchs.hoch(n) · fuchs.runter(n)</li>
             <li>wiederhole(n, () =&gt; {"{ ... }"})</li>
           </ul>
-          <button
-            onClick={() => setShowHint((s) => !s)}
-            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400"
-          >
-            <Lightbulb size={15} /> {showHint ? "Tipp verbergen" : "Tipp anzeigen"}
-          </button>
-          {showHint && <p className="mt-2 text-neutral-600 dark:text-neutral-300">{lesson.hint}</p>}
         </div>
-
-        <div className="rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06]">
-          <div className="bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-400">
-            SO SIEHT DAS IN UNITY AUS (C#)
-          </div>
-          <div className="bg-neutral-950 p-4 space-y-3">
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-emerald-400/80 mb-1">Hier (JavaScript)</div>
-              <pre className="text-xs font-mono text-neutral-100 whitespace-pre-wrap">{lesson.bridgeJs}</pre>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-sky-400/80 mb-1">Unity (C#)</div>
-              <pre className="text-xs font-mono text-sky-100 whitespace-pre-wrap">{lesson.bridgeCs}</pre>
-            </div>
-          </div>
-        </div>
+        <HelpPanel
+          lessonKey={lesson.key}
+          hints={lesson.hints}
+          solution={lesson.solution}
+          onUseSolution={() => saveCode(lesson.solution)}
+        />
       </div>
-    </div>
-  );
-}
 
-function NextButton({ lessonKey, onOpen }: { lessonKey: string; onOpen: (k: string) => void }) {
-  const idx = WORLD1.findIndex((l) => l.key === lessonKey);
-  const next = WORLD1[idx + 1];
-  if (!next) {
-    return (
-      <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-        🏆 Welt 1 geschafft! Weitere Welten kommen bald.
-      </span>
-    );
-  }
-  return (
-    <button
-      onClick={() => onOpen(next.key)}
-      className="inline-flex items-center gap-1.5 rounded-xl bg-violet-500 text-white px-4 py-2 text-sm font-semibold hover:opacity-90"
-    >
-      Nächste Lektion →
-    </button>
+      <UnityBridge js={lesson.bridgeJs} cs={lesson.bridgeCs} />
+    </div>
   );
 }

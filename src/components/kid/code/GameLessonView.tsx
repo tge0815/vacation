@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Play, Square, RotateCcw, Loader2, Lightbulb } from "lucide-react";
+import { Play, Square, Loader2 } from "lucide-react";
 import { Confetti } from "@/components/Confetti";
 import type { GameLesson } from "./lessons";
+import { HelpPanel, ExplainBox } from "./HelpPanel";
+import { NextButton, UnityBridge } from "./LessonChrome";
 
-const CELL = 56;
+const CELL = 54;
 
-// Live-Simulation im Web-Worker: onUpdate() läuft pro Frame, taste() liest die
-// gedrückten Tasten. Der Worker schickt jeden Frame den Spielzustand zurück;
-// der Haupt-Thread rendert nur. Ein Watchdog killt Endlosschleifen.
+// Live-Spiel-Engine im Web-Worker: onUpdate() pro Frame, taste() liest Tasten,
+// dazu Punkte (hud), Gegner (Kollision = verloren), Zufall und Schwerkraft
+// (fuchs.springe / fuchs.amBoden). Ein Watchdog beendet Endlosschleifen.
 const WORKER_SRC = `
 let timer = null;
 self._keys = {};
@@ -17,51 +19,93 @@ self.onmessage = (e) => {
   const m = e.data;
   if (m.type === "key") { self._keys[m.name] = m.down; return; }
   if (m.type === "stop") { if (timer) { clearInterval(timer); timer = null; } return; }
-  if (m.type === "start") {
-    if (timer) { clearInterval(timer); timer = null; }
-    self._keys = {};
-    const cfg = m.cfg, code = m.code;
-    const fox = { x: cfg.fox.x, y: cfg.fox.y };
-    const coins = cfg.targets.map((t) => ({ x: t.x, y: t.y, got: false }));
-    let onUpdateFn = null;
-    const taste = (n) => !!self._keys[n];
-    const onUpdate = (fn) => { onUpdateFn = fn; };
-    try {
-      const f = new Function("fuchs", "taste", "onUpdate", "cols", "rows", code);
-      f(fox, taste, onUpdate, cfg.cols, cfg.rows);
-    } catch (err) { self.postMessage({ type: "error", error: String((err && err.message) || err) }); return; }
-    const started = Date.now();
-    timer = setInterval(() => {
-      try { if (onUpdateFn) onUpdateFn(); }
-      catch (err) { clearInterval(timer); timer = null; self.postMessage({ type: "error", error: String((err && err.message) || err) }); return; }
-      fox.x = Math.max(0, Math.min(cfg.cols - 1, fox.x));
-      fox.y = Math.max(0, Math.min(cfg.rows - 1, fox.y));
-      for (const c of coins) if (!c.got && Math.abs(c.x - fox.x) < 0.5 && Math.abs(c.y - fox.y) < 0.5) c.got = true;
-      const remaining = coins.filter((c) => !c.got).length;
-      const elapsed = (Date.now() - started) / 1000;
-      let status = "playing";
-      if (remaining === 0) status = "win";
-      else if (cfg.timeLimit && elapsed >= cfg.timeLimit) status = "timeout";
-      self.postMessage({
-        type: "frame",
-        fox: { x: fox.x, y: fox.y },
-        coins: coins.map((c) => ({ x: c.x, y: c.y, got: c.got })),
-        time: cfg.timeLimit ? Math.max(0, cfg.timeLimit - elapsed) : elapsed,
-        status: status,
-      });
-      if (status !== "playing") { clearInterval(timer); timer = null; }
-    }, 1000 / 30);
-  }
+  if (m.type !== "start") return;
+  if (timer) { clearInterval(timer); timer = null; }
+  self._keys = {};
+  const cfg = m.cfg, code = m.code;
+  const fox = { x: cfg.fox.x, y: cfg.fox.y, vy: 0, amBoden: true };
+  fox.springe = function () { if (fox.amBoden) { fox.vy = -0.55; fox.amBoden = false; } };
+  const muenzen = (cfg.targets || []).map((t) => ({ x: t.x, y: t.y, weg: false }));
+  const gegner = (cfg.enemies || []).map((en) => ({
+    x: en.axis === "h" ? en.from : en.line,
+    y: en.axis === "v" ? en.from : en.line,
+    _pos: en.from, _dir: 1, _e: en,
+  }));
+  let onUpdateFn = null, collectCb = null, hudText = "";
+  const taste = (n) => !!self._keys[n];
+  const onUpdate = (fn) => { onUpdateFn = fn; };
+  const beimEinsammeln = (fn) => { collectCb = fn; };
+  const hud = (t) => { hudText = String(t); };
+  const zufall = (a, b) => { a = Math.floor(a); b = Math.floor(b); return a + Math.floor(Math.random() * (b - a + 1)); };
+  try {
+    new Function("fuchs","taste","onUpdate","beimEinsammeln","hud","zufall","gegner","muenzen","cols","rows", code)
+      (fox, taste, onUpdate, beimEinsammeln, hud, zufall, gegner, muenzen, cfg.cols, cfg.rows);
+  } catch (err) { self.postMessage({ type: "error", error: String((err && err.message) || err) }); return; }
+  const started = Date.now();
+  const G = 0.03;
+  timer = setInterval(() => {
+    if (cfg.gravity) fox.amBoden = fox.y >= cfg.rows - 1 - 0.001;
+    try { if (onUpdateFn) onUpdateFn(); }
+    catch (err) { clearInterval(timer); timer = null; self.postMessage({ type: "error", error: String((err && err.message) || err) }); return; }
+    if (cfg.gravity) {
+      fox.vy += G; fox.y += fox.vy;
+      if (fox.y >= cfg.rows - 1) { fox.y = cfg.rows - 1; fox.vy = 0; fox.amBoden = true; }
+      else if (fox.y < 0) { fox.y = 0; fox.vy = 0; fox.amBoden = false; }
+      else fox.amBoden = false;
+    }
+    fox.x = Math.max(0, Math.min(cfg.cols - 1, fox.x));
+    if (!cfg.gravity) fox.y = Math.max(0, Math.min(cfg.rows - 1, fox.y));
+    for (const gg of gegner) {
+      gg._pos += gg._dir * gg._e.speed;
+      if (gg._pos >= gg._e.to) { gg._pos = gg._e.to; gg._dir = -1; }
+      else if (gg._pos <= gg._e.from) { gg._pos = gg._e.from; gg._dir = 1; }
+      gg.x = gg._e.axis === "h" ? gg._pos : gg._e.line;
+      gg.y = gg._e.axis === "v" ? gg._pos : gg._e.line;
+    }
+    let status = "playing";
+    for (const gg of gegner) { if (Math.abs(gg.x - fox.x) < 0.6 && Math.abs(gg.y - fox.y) < 0.6) { status = "lose"; break; } }
+    if (status === "playing") {
+      for (const c of muenzen) {
+        if (!c.weg && Math.abs(c.x - fox.x) < 0.5 && Math.abs(c.y - fox.y) < 0.5) {
+          c.weg = true;
+          if (collectCb) { try { collectCb(); } catch (err) { clearInterval(timer); timer = null; self.postMessage({ type: "error", error: String((err && err.message) || err) }); return; } }
+        }
+      }
+    }
+    if (status === "playing") {
+      if (cfg.winOn === "collectAll" && muenzen.length > 0 && muenzen.every((c) => c.weg)) status = "win";
+      else if (cfg.winOn === "reachGoal" && cfg.goalCell && Math.abs(cfg.goalCell.x - fox.x) < 0.6 && Math.abs(cfg.goalCell.y - fox.y) < 0.6) status = "win";
+    }
+    const elapsed = (Date.now() - started) / 1000;
+    if (status === "playing" && cfg.timeLimit && elapsed >= cfg.timeLimit) status = "timeout";
+    self.postMessage({
+      type: "frame",
+      fox: { x: fox.x, y: fox.y },
+      coins: muenzen.map((c) => ({ x: c.x, y: c.y, weg: c.weg })),
+      enemies: gegner.map((gg) => ({ x: gg.x, y: gg.y })),
+      hud: hudText,
+      time: cfg.timeLimit ? Math.max(0, cfg.timeLimit - elapsed) : elapsed,
+      status: status,
+    });
+    if (status !== "playing") { clearInterval(timer); timer = null; }
+  }, 1000 / 30);
 };
 `;
 
 const KEYMAP: Record<string, string> = {
   ArrowRight: "rechts", ArrowLeft: "links", ArrowUp: "hoch", ArrowDown: "runter",
-  d: "rechts", a: "links", w: "hoch", s: "runter",
+  d: "rechts", a: "links", w: "hoch", s: "runter", " ": "turbo",
 };
 
 type Status = "idle" | "running" | "win" | "fail" | "error";
-type Frame = { fox: { x: number; y: number }; coins: { x: number; y: number; got: boolean }[]; time: number; status: string };
+type Frame = {
+  fox: { x: number; y: number };
+  coins: { x: number; y: number; weg: boolean }[];
+  enemies: { x: number; y: number }[];
+  hud: string;
+  time: number;
+  status: string;
+};
 
 export function GameLessonView({
   userId,
@@ -81,7 +125,7 @@ export function GameLessonView({
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [time, setTime] = useState<number | null>(lesson.timeLimit ?? null);
-  const [showHint, setShowHint] = useState(false);
+  const [hud, setHud] = useState("");
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
@@ -97,12 +141,17 @@ export function GameLessonView({
     setCode(saved ?? lesson.starter);
     setStatus("idle");
     setMessage(null);
+    setHud("");
     setTime(lesson.timeLimit ?? null);
-    setShowHint(false);
     requestAnimationFrame(() =>
       drawFrame({
         fox: lesson.fox,
-        coins: lesson.targets.map((t) => ({ ...t, got: false })),
+        coins: (lesson.targets ?? []).map((t) => ({ ...t, weg: false })),
+        enemies: (lesson.enemies ?? []).map((e) => ({
+          x: e.axis === "h" ? e.from : e.line,
+          y: e.axis === "v" ? e.from : e.line,
+        })),
+        hud: "",
         time: lesson.timeLimit ?? 0,
         status: "idle",
       }),
@@ -154,9 +203,13 @@ export function GameLessonView({
     const W = lesson.cols * CELL;
     const H = lesson.rows * CELL;
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = "#eaf6ea";
+    ctx.fillStyle = lesson.gravity ? "#e7f0ff" : "#eaf6ea";
     ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = "#c3dcc3";
+    if (lesson.gravity) {
+      ctx.fillStyle = "#c7d2fe";
+      ctx.fillRect(0, (lesson.rows - 1) * CELL + CELL - 6, W, 6); // Boden
+    }
+    ctx.strokeStyle = lesson.gravity ? "#cdddf7" : "#c3dcc3";
     ctx.lineWidth = 1;
     for (let x = 0; x <= lesson.cols; x++) {
       ctx.beginPath();
@@ -173,7 +226,9 @@ export function GameLessonView({
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = `${Math.floor(CELL * 0.55)}px system-ui, sans-serif`;
-    for (const c of f.coins) if (!c.got) ctx.fillText(lesson.targetIcon, cell(c.x), cell(c.y));
+    if (lesson.goalCell) ctx.fillText("⭐", cell(lesson.goalCell.x), cell(lesson.goalCell.y));
+    for (const c of f.coins) if (!c.weg) ctx.fillText(lesson.targetIcon ?? "🪙", cell(c.x), cell(c.y));
+    for (const g of f.enemies) ctx.fillText("👾", cell(g.x), cell(g.y));
     ctx.font = `${Math.floor(CELL * 0.62)}px system-ui, sans-serif`;
     ctx.fillText("🦊", cell(f.fox.x), cell(f.fox.y));
   }
@@ -181,7 +236,7 @@ export function GameLessonView({
   async function win() {
     stopAll();
     setStatus("win");
-    setMessage("Geschafft! ⭐ Super gesteuert.");
+    setMessage("Geschafft! ⭐ Stark gespielt.");
     try {
       const res = await fetch("/api/code/complete", {
         method: "POST",
@@ -197,6 +252,7 @@ export function GameLessonView({
     stopAll();
     setStatus("running");
     setMessage(null);
+    setHud("");
     runningRef.current = true;
 
     const blob = new Blob([WORKER_SRC], { type: "application/javascript" });
@@ -215,12 +271,17 @@ export function GameLessonView({
       if (d.type === "frame") {
         lastFrameRef.current = Date.now();
         drawFrame(d as Frame);
+        setHud(d.hud ?? "");
         if (lesson.timeLimit != null) setTime(d.time ?? 0);
         if (d.status === "win") win();
-        else if (d.status === "timeout") {
+        else if (d.status === "lose") {
           stopAll();
           setStatus("fail");
-          setMessage("Zeit um! ⏱ Nicht alle Münzen geschafft – probier eine schnellere Route.");
+          setMessage("Erwischt vom Gegner! 👾 Nicht berühren – versuch's nochmal.");
+        } else if (d.status === "timeout") {
+          stopAll();
+          setStatus("fail");
+          setMessage("Zeit um! ⏱ Probier eine schnellere Route.");
         }
       }
     };
@@ -229,7 +290,6 @@ export function GameLessonView({
     window.addEventListener("keyup", onKeyUp);
     canvasRef.current?.focus();
 
-    // Watchdog gegen Endlosschleifen im onUpdate.
     watchRef.current = setInterval(() => {
       if (runningRef.current && Date.now() - lastFrameRef.current > 1500) {
         stopAll();
@@ -245,7 +305,11 @@ export function GameLessonView({
         cols: lesson.cols,
         rows: lesson.rows,
         fox: lesson.fox,
-        targets: lesson.targets,
+        winOn: lesson.winOn,
+        targets: lesson.targets ?? [],
+        goalCell: lesson.goalCell ?? null,
+        enemies: lesson.enemies ?? [],
+        gravity: lesson.gravity ?? false,
         timeLimit: lesson.timeLimit ?? null,
       },
     });
@@ -269,19 +333,26 @@ export function GameLessonView({
   }
 
   const DPAD = [
-    { name: "hoch", label: "▲", col: "col-start-2" },
+    { name: "hoch", label: "▲", col: "col-start-2 row-start-1" },
     { name: "links", label: "◀", col: "col-start-1 row-start-2" },
     { name: "runter", label: "▼", col: "col-start-2 row-start-2" },
     { name: "rechts", label: "▶", col: "col-start-3 row-start-2" },
   ];
 
+  // Spickzettel je nach Lektion.
+  const cheats: string[] = [];
+  cheats.push('taste("rechts") · onUpdate(() => {…})');
+  if (lesson.gravity) cheats.push("fuchs.springe() · fuchs.amBoden");
+  if (lesson.targets?.length) cheats.push("beimEinsammeln(() => {…}) · hud(text)");
+  if (lesson.enemies?.length) cheats.push("gegner[0].x · gegner[0].y");
+  if (lesson.key.startsWith("w8")) cheats.push("zufall(1, 3)");
+
   return (
     <div>
       {status === "win" && <Confetti />}
-      <div className="mb-4">
+      <div className="mb-3">
         <h1 className="text-xl font-semibold">{lesson.title}</h1>
-        <p className="text-sm text-neutral-500 mt-1">{lesson.learn}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="mt-1 flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-2 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-300 px-3 py-1.5 text-sm font-medium">
             🎯 {lesson.goal}
           </span>
@@ -294,8 +365,14 @@ export function GameLessonView({
               ⏱ {Math.ceil(time)}s
             </span>
           )}
+          {hud && (
+            <span className="rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 text-sm font-semibold">
+              {hud}
+            </span>
+          )}
         </div>
       </div>
+      <ExplainBox text={lesson.explain} />
 
       <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-white dark:bg-neutral-900 p-3 mb-3 flex flex-col items-center gap-3">
         <canvas
@@ -306,40 +383,49 @@ export function GameLessonView({
           className="max-w-full h-auto rounded-lg outline-none"
           style={{ width: lesson.cols * CELL, maxWidth: "100%" }}
         />
-        {/* Touch-Steuerkreuz (fürs iPad) */}
-        <div className="grid grid-cols-3 grid-rows-2 gap-1.5 sm:hidden select-none">
-          {DPAD.map((b) => (
-            <button
-              key={b.name}
-              className={`${b.col} size-12 rounded-xl bg-neutral-200 dark:bg-neutral-800 text-lg font-bold active:bg-violet-500 active:text-white`}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                pad(b.name, true);
-              }}
-              onPointerUp={() => pad(b.name, false)}
-              onPointerLeave={() => pad(b.name, false)}
-            >
-              {b.label}
-            </button>
-          ))}
+        <div className="flex items-end gap-4 sm:hidden select-none">
+          <div className="grid grid-cols-3 grid-rows-2 gap-1.5">
+            {DPAD.map((b) => (
+              <button
+                key={b.name}
+                className={`${b.col} size-11 rounded-xl bg-neutral-200 dark:bg-neutral-800 text-lg font-bold active:bg-violet-500 active:text-white`}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  pad(b.name, true);
+                }}
+                onPointerUp={() => pad(b.name, false)}
+                onPointerLeave={() => pad(b.name, false)}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+          <button
+            className="size-11 rounded-xl bg-amber-400 text-white text-lg font-bold active:scale-95"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              pad("turbo", true);
+            }}
+            onPointerUp={() => pad("turbo", false)}
+            onPointerLeave={() => pad("turbo", false)}
+            title="Turbo / Leertaste"
+          >
+            ⚡
+          </button>
         </div>
-        <p className="text-xs text-neutral-400 hidden sm:block">Steuerung: Pfeiltasten (klicke zuerst ins Spielfeld)</p>
+        <p className="text-xs text-neutral-400 hidden sm:block">
+          Steuerung: Pfeiltasten{lesson.key.startsWith("w4") ? " + Leertaste (Turbo)" : ""} · klicke zuerst ins Spielfeld
+        </p>
       </div>
 
       <div className="rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06]">
         <div className="flex items-center justify-between bg-neutral-900 px-3 py-2">
           <span className="text-xs font-semibold text-neutral-400">DEIN CODE</span>
           <div className="flex gap-2">
-            <button
-              onClick={stopAll}
-              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-neutral-300 hover:bg-neutral-800"
-            >
+            <button onClick={stopAll} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold text-neutral-300 hover:bg-neutral-800">
               <Square size={13} /> Stopp
             </button>
-            <button
-              onClick={run}
-              className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1 text-xs font-bold text-white hover:opacity-90"
-            >
+            <button onClick={run} className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1 text-xs font-bold text-white hover:opacity-90">
               {status === "running" ? <Loader2 className="animate-spin" size={13} /> : <Play size={13} />} Start
             </button>
           </div>
@@ -349,7 +435,7 @@ export function GameLessonView({
           onChange={(e) => saveCode(e.target.value)}
           onKeyDown={onEditorKey}
           spellCheck={false}
-          rows={7}
+          rows={8}
           className="w-full bg-neutral-950 text-neutral-100 font-mono text-sm p-3 leading-relaxed focus:outline-none resize-y"
           style={{ tabSize: 2 }}
         />
@@ -374,53 +460,22 @@ export function GameLessonView({
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-black/[0.06] dark:border-white/[0.06] bg-neutral-50 dark:bg-neutral-900/50 p-4 text-sm">
-          <div className="font-semibold mb-2">🧰 Neue Befehle</div>
+          <div className="font-semibold mb-2">🧰 Deine Befehle</div>
           <ul className="space-y-1 font-mono text-xs text-neutral-600 dark:text-neutral-300">
-            <li>onUpdate(() =&gt; {"{ ... }"}) — jeder Frame</li>
-            <li>taste(&quot;rechts&quot;) — Taste gedrückt?</li>
-            <li>fuchs.x += 0.15 — bewegen</li>
+            {cheats.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
           </ul>
-          <button
-            onClick={() => setShowHint((s) => !s)}
-            className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400"
-          >
-            <Lightbulb size={15} /> {showHint ? "Tipp verbergen" : "Tipp anzeigen"}
-          </button>
-          {showHint && <p className="mt-2 text-neutral-600 dark:text-neutral-300">{lesson.hint}</p>}
         </div>
-        <div className="rounded-2xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06]">
-          <div className="bg-neutral-900 px-4 py-2 text-xs font-semibold text-neutral-400">SO SIEHT DAS IN UNITY AUS (C#)</div>
-          <div className="bg-neutral-950 p-4 space-y-3">
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-emerald-400/80 mb-1">Hier (JavaScript)</div>
-              <pre className="text-xs font-mono text-neutral-100 whitespace-pre-wrap">{lesson.bridgeJs}</pre>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-wide text-sky-400/80 mb-1">Unity (C#)</div>
-              <pre className="text-xs font-mono text-sky-100 whitespace-pre-wrap">{lesson.bridgeCs}</pre>
-            </div>
-          </div>
-        </div>
+        <HelpPanel
+          lessonKey={lesson.key}
+          hints={lesson.hints}
+          solution={lesson.solution}
+          onUseSolution={() => saveCode(lesson.solution)}
+        />
       </div>
-    </div>
-  );
-}
 
-function NextButton({ lessonKey, onOpen }: { lessonKey: string; onOpen: (k: string) => void }) {
-  return (
-    <div className="mt-3 flex justify-end">
-      {lessonKey === "w2l2" ? (
-        <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-          🏆 Welt 2 geschafft! Weitere Welten kommen bald.
-        </span>
-      ) : (
-        <button
-          onClick={() => onOpen("w2l2")}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-violet-500 text-white px-4 py-2 text-sm font-semibold hover:opacity-90"
-        >
-          Nächste Lektion →
-        </button>
-      )}
+      <UnityBridge js={lesson.bridgeJs} cs={lesson.bridgeCs} />
     </div>
   );
 }

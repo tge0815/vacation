@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { completeCodeLesson } from "@/lib/db/repo";
 import { authUser } from "@/lib/auth/server";
+import { WORLD1, GAME_LESSONS } from "@/components/kid/code/lessons";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Bekannte Lektionen + ihre Münz-Belohnung (serverseitig, nicht dem Client
-// vertrauen). So kann eine Lektion nicht beliebig oft Münzen bringen.
+// Münz-Belohnung pro Lektion – serverseitig aus den Lektionsdaten abgeleitet,
+// damit eine Lektion nicht beliebig oft Münzen bringt.
 const LESSON_COINS: Record<string, number> = {
-  "basics": 3,
-  "w1l1": 2,
-  "w1l2": 2,
-  "w1l3": 3,
-  "w2l1": 3,
-  "w2l2": 4,
+  basics: 3,
+  ...Object.fromEntries(WORLD1.map((l) => [l.key, l.coins])),
+  ...Object.fromEntries(GAME_LESSONS.map((l) => [l.key, l.coins])),
 };
 
 // POST { userId, lessonKey } → Lektion abschließen (Münzen nur beim 1. Mal).
