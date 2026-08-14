@@ -36,5 +36,31 @@ services:
       # SQLite-DB — persistiert!
       - lernferien-data:/data
 
+    # Nur DIESER Container wird von Watchtower automatisch aktualisiert.
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  # ── Auto-Deploy: zieht neue Images automatisch nach dem GitHub-Build ──
+  # Opt-in über das Profil "autodeploy":
+  #   docker compose -f docker-compose.prod.yml --profile autodeploy up -d
+  # Prüft alle 2 Minuten die Registry und ersetzt den lernferien-Container,
+  # sobald ein neues ghcr.io/tge0815/vacation:latest gepusht wurde.
+  watchtower:
+    image: containrrr/watchtower
+    container_name: lernferien-watchtower
+    restart: unless-stopped
+    profiles: ["autodeploy"]
+    environment:
+      WATCHTOWER_CLEANUP: "true" # alte Images nach dem Update aufräumen
+      WATCHTOWER_LABEL_ENABLE: "true" # nur markierte Container (siehe label oben)
+      WATCHTOWER_POLL_INTERVAL: "120" # alle 120 s prüfen
+      WATCHTOWER_INCLUDE_RESTARTING: "true"
+      # Privates GHCR-Paket? Zugangsdaten hier setzen (in .env), sonst leer lassen
+      # (öffentliches Paket braucht nichts):
+      REPO_USER: "${GHCR_USER:-}"
+      REPO_PASS: "${GHCR_TOKEN:-}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
 volumes:
   lernferien-data:
