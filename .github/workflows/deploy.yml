@@ -1,0 +1,47 @@
+# Sofort-Deploy per SSH, sobald "Build & Push Container" erfolgreich war.
+#
+# SCHLÄFT, bis du ihn scharf schaltest — läuft nur, wenn die Repo-Variable
+# DEPLOY_ENABLED == "true" ist (so wird nichts rot, solange nichts konfiguriert ist).
+#
+# AKTIVIEREN (Repo → Settings → Secrets and variables → Actions):
+#   Variables:
+#     DEPLOY_ENABLED = true
+#   Secrets:
+#     DEPLOY_HOST     dein.server.de  (oder öffentliche IP)
+#     DEPLOY_USER     SSH-Benutzer auf dem Server (in der docker-Gruppe → kein sudo nötig)
+#     DEPLOY_SSH_KEY  privater Deploy-Key (öffentlicher Teil in ~/.ssh/authorized_keys des Servers)
+#     DEPLOY_DIR      Projektpfad auf dem Server, z.B. /home/deploy/lernApp
+#     DEPLOY_PORT     (optional) SSH-Port, Standard 22
+#
+# Deploy-Key auf dem Server erzeugen (eigenes Schlüsselpaar, nur für dieses Repo):
+#   ssh-keygen -t ed25519 -f ~/.ssh/lerncoach_deploy -N ""
+#   cat ~/.ssh/lerncoach_deploy.pub >> ~/.ssh/authorized_keys
+#   cat ~/.ssh/lerncoach_deploy          # -> Inhalt als Secret DEPLOY_SSH_KEY einfügen
+#
+# Danach: jeder grüne Build ruft automatisch ./deploy.sh auf dem Server auf.
+
+name: Deploy to server
+
+on:
+  workflow_run:
+    workflows: ["Build & Push Container"]
+    types: [completed]
+    branches: ["main"]
+
+jobs:
+  deploy:
+    # Nur bei erfolgreichem Build UND wenn ausdrücklich aktiviert.
+    if: ${{ github.event.workflow_run.conclusion == 'success' && vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH → deploy.sh
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_DIR }}"
+            ./deploy.sh
