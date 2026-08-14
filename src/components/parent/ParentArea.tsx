@@ -131,37 +131,26 @@ export function ParentArea() {
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 flex-1">
-      <header className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => router.push("/")}
-          className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-        >
+      <header className="flex items-center justify-between mb-6 flex-wrap gap-2">
+        <button onClick={() => router.push("/")} className="pill py-2 text-sm">
           <ArrowLeft size={16} /> Zur Profil-Auswahl
         </button>
         <div className="flex items-center gap-3">
           {typeof Notification !== "undefined" && notifyPerm !== "granted" && (
-            <button
-              onClick={enableNotifications}
-              title="Benachrichtigung bei neuen Anfragen"
-              className="inline-flex items-center gap-1.5 text-sm text-sky-600 dark:text-sky-400 hover:opacity-80"
-            >
+            <button onClick={enableNotifications} title="Benachrichtigung bei neuen Anfragen" className="pill py-2 text-sm">
               <Bell size={16} /> Benachrichtigungen
             </button>
           )}
-          <h1 className="text-lg font-semibold">Eltern-Bereich</h1>
+          <h1 className="text-lg font-extrabold">Eltern-Bereich</h1>
         </div>
       </header>
 
-      <nav className="flex gap-1 mb-6 rounded-xl bg-neutral-100 dark:bg-neutral-900 p-1 overflow-x-auto">
+      <nav className="flex gap-2 mb-6 overflow-x-auto pb-1">
         {TABS.map(({ key, label, Icon }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition ${
-              tab === key
-                ? "bg-white dark:bg-neutral-800 shadow-sm"
-                : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-            }`}
+            className={`pill py-2 text-sm whitespace-nowrap ${tab === key ? "pill-dark" : ""}`}
           >
             <Icon size={16} /> {label}
             {key === "belohnungen" && pendingRewards > 0 && (

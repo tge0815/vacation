@@ -76,13 +76,11 @@ export function CodeLab({ userId }: { userId: number }) {
       <header className="flex items-center justify-between mb-6">
         <button
           onClick={() => (lessonKey ? setLessonKey(null) : router.push(`/kind/${userId}`))}
-          className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+          className="pill py-2 text-sm"
         >
           <ArrowLeft size={16} /> {lessonKey ? "Übersicht" : "Zurück"}
         </button>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400">
-          🪙 {coins}
-        </span>
+        <span className="pill pill-peach py-2 text-sm">🪙 {coins}</span>
       </header>
 
       {unlocked === null ? (
@@ -152,7 +150,7 @@ function Home({ done, onOpen }: { done: string[]; onOpen: (k: string) => void })
       <div className="space-y-8">
         <button
           onClick={() => onOpen("basics")}
-          className="w-full flex items-center gap-3 rounded-2xl border p-4 text-left transition bg-white dark:bg-neutral-900 border-black/[0.06] dark:border-white/[0.06] hover:shadow-md hover:-translate-y-0.5"
+          className="sticker w-full flex items-center gap-3 p-4 text-left hover:-translate-y-0.5 transition"
         >
           <span
             className={`shrink-0 size-10 rounded-xl flex items-center justify-center text-white ${
@@ -189,10 +187,8 @@ function Home({ done, onOpen }: { done: string[]; onOpen: (k: string) => void })
                       key={key}
                       onClick={() => !locked && onOpen(key)}
                       disabled={locked}
-                      className={`w-full flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
-                        locked
-                          ? "bg-neutral-100 dark:bg-neutral-900/50 border-transparent opacity-60 cursor-not-allowed"
-                          : "bg-white dark:bg-neutral-900 border-black/[0.06] dark:border-white/[0.06] hover:shadow-md hover:-translate-y-0.5"
+                      className={`sticker w-full flex items-center gap-3 p-4 text-left transition ${
+                        locked ? "opacity-50 cursor-not-allowed" : "hover:-translate-y-0.5"
                       }`}
                     >
                       <span

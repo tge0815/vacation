@@ -6,6 +6,7 @@ import { ArrowLeft, Flame, Loader2, Play, Check, LogOut, Gift, History, Gamepad2
 import { ProgressRing } from "@/components/ProgressRing";
 import { color } from "@/components/colors";
 import { subjectIcon } from "@/components/subjectIcon";
+import { Rainbow } from "@/components/doodle/Doodles";
 import type { PublicUser } from "@/lib/serialize";
 
 type SubjectProgress = {
@@ -71,52 +72,34 @@ export function KidToday({ userId }: { userId: number }) {
   const werkstattUnlocked = totalGoal === 0 || allDone;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-8 flex-1">
-      <header className="flex items-center justify-between mb-8">
+    <main className="relative mx-auto w-full max-w-3xl px-4 py-8 flex-1">
+      <Rainbow className="absolute top-2 right-2 hidden sm:block" size={80} />
+      <header className="flex items-center justify-between gap-2 mb-8 flex-wrap">
         {role === "child" ? (
-          <button
-            onClick={logout}
-            className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-          >
+          <button onClick={logout} className="pill py-2 text-sm">
             <LogOut size={16} /> Abmelden
           </button>
         ) : (
-          <button
-            onClick={() => router.push("/")}
-            className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-          >
+          <button onClick={() => router.push("/")} className="pill py-2 text-sm">
             <ArrowLeft size={16} /> Profil wechseln
           </button>
         )}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           {prog && prog.streak > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange-500">
-              <Flame size={18} /> {prog.streak}
+            <span className="pill pill-sun py-2 text-sm">
+              <Flame size={16} /> {prog.streak}
             </span>
           )}
           {user && (
             <>
-              <button
-                onClick={() => router.push(`/kind/${userId}/verlauf`)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-500/10 px-3 py-1.5 text-sm font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-500/20 transition"
-                title="Deine gelösten Aufgaben"
-              >
+              <button onClick={() => router.push(`/kind/${userId}/verlauf`)} className="pill py-2 text-sm" title="Deine gelösten Aufgaben">
                 <History size={16} /> Verlauf
               </button>
-              <button
-                onClick={() => router.push(`/kind/${userId}/belohnung`)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-3 py-1.5 text-sm font-semibold text-sky-600 dark:text-sky-400 hover:bg-sky-500/20 transition"
-                title="Coins gegen Bildschirmzeit eintauschen"
-              >
+              <button onClick={() => router.push(`/kind/${userId}/belohnung`)} className="pill pill-mint py-2 text-sm" title="Coins gegen Bildschirmzeit eintauschen">
                 <Gift size={16} /> Zeit
               </button>
-              <button
-                onClick={() => router.push(`/kind/${userId}/spiele`)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition"
-                title="Coins & Spiele"
-              >
-                <span className="text-base leading-none">🪙</span>
-                {user.coins}
+              <button onClick={() => router.push(`/kind/${userId}/spiele`)} className="pill pill-peach py-2 text-sm" title="Coins & Spiele">
+                🪙 {user.coins}
               </button>
             </>
           )}
@@ -125,31 +108,40 @@ export function KidToday({ userId }: { userId: number }) {
 
       {user && (
         <div className="flex items-center gap-4 mb-6">
-          <span className={`size-16 rounded-full ${color(user.color).soft} flex items-center justify-center text-3xl`}>
+          <span
+            className={`size-16 rounded-full ${color(user.color).soft} flex items-center justify-center text-3xl border-[2.5px]`}
+            style={{ borderColor: "var(--dl-outline)", boxShadow: "3px 3px 0 var(--dl-shadow)" }}
+          >
             {user.emoji}
           </span>
           <div>
-            <h1 className="text-2xl font-semibold">Hallo {user.name}!</h1>
-            <p className="text-neutral-500 text-sm">
-              {allDone ? "Tagesziel geschafft — stark!" : "Bereit für ein bisschen Üben?"}
+            <h1 className="text-2xl font-extrabold">Hallo {user.name}!</h1>
+            <p className="dl-muted text-sm font-semibold">
+              {allDone ? "Tagesziel geschafft — stark! 🎉" : "Bereit für ein bisschen Üben?"}
             </p>
           </div>
         </div>
       )}
 
-      {/* Tagesziel-Balken: Fächer geschafft (funktioniert für Minuten & Aufgaben) */}
+      {/* Tagesziel-Balken */}
       {totalGoal > 0 && (
-        <div className="mb-8 rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-4">
+        <div className="sticker p-4 mb-6">
           <div className="flex justify-between text-sm mb-2">
-            <span className="font-medium">Tagesziel</span>
-            <span className="text-neutral-500 nums">
+            <span className="font-extrabold">Tagesziel</span>
+            <span className="dl-muted nums font-bold">
               {totalReached} / {totalGoal} Fächer
             </span>
           </div>
-          <div className="h-3 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+          <div
+            className="h-4 rounded-full overflow-hidden border-[2.5px]"
+            style={{ borderColor: "var(--dl-outline)", background: "var(--dl-paper)" }}
+          >
             <div
-              className={`h-full rounded-full transition-all duration-500 ${allDone ? "bg-emerald-500" : "bg-sky-500"}`}
-              style={{ width: `${Math.min(100, totalGoal ? (totalReached / totalGoal) * 100 : 0)}%` }}
+              className="h-full transition-all duration-500"
+              style={{
+                width: `${Math.min(100, totalGoal ? (totalReached / totalGoal) * 100 : 0)}%`,
+                background: allDone ? "#34c77b" : "#f97316",
+              }}
             />
           </div>
         </div>
@@ -159,30 +151,32 @@ export function KidToday({ userId }: { userId: number }) {
       {werkstattUnlocked ? (
         <button
           onClick={() => router.push(`/kind/${userId}/werkstatt`)}
-          className="w-full mb-6 flex items-center gap-4 rounded-2xl p-4 text-left text-white bg-gradient-to-r from-violet-500 to-indigo-500 hover:opacity-95 active:scale-[0.99] transition"
+          className="sticker sticker-sun w-full mb-6 flex items-center gap-4 p-4 text-left hover:-translate-y-0.5 transition"
+          style={{ background: "var(--dl-lilac)", color: "#26242b" }}
         >
-          <span className="shrink-0 size-12 rounded-xl bg-white/20 flex items-center justify-center">
-            <Gamepad2 size={26} />
+          <span
+            className="shrink-0 size-12 rounded-2xl flex items-center justify-center border-[2.5px] bg-white"
+            style={{ borderColor: "#26242b" }}
+          >
+            <Gamepad2 size={26} style={{ color: "#26242b" }} />
           </span>
           <span className="flex-1">
-            <span className="block font-semibold">Spiele-Werkstatt</span>
-            <span className="block text-sm text-white/80">Programmiere den Fuchs & baue ein Spiel</span>
+            <span className="block font-extrabold">Spiele-Werkstatt</span>
+            <span className="block text-sm font-semibold opacity-80">Programmiere den Fuchs & baue ein Spiel</span>
           </span>
           <span className="text-2xl">🦊</span>
         </button>
       ) : (
-        <div
-          className="w-full mb-6 flex items-center gap-4 rounded-2xl p-4 bg-neutral-100 dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06]"
-          title="Erst alle Tagesziele schaffen"
-        >
-          <span className="shrink-0 size-12 rounded-xl bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-neutral-400">
+        <div className="sticker w-full mb-6 flex items-center gap-4 p-4 opacity-90" title="Erst alle Tagesziele schaffen">
+          <span
+            className="shrink-0 size-12 rounded-2xl flex items-center justify-center border-[2.5px] dl-muted"
+            style={{ borderColor: "var(--dl-outline)" }}
+          >
             <Lock size={22} />
           </span>
           <span className="flex-1">
-            <span className="block font-semibold text-neutral-600 dark:text-neutral-300">
-              Spiele-Werkstatt
-            </span>
-            <span className="block text-sm text-neutral-500">
+            <span className="block font-extrabold">Spiele-Werkstatt</span>
+            <span className="block text-sm dl-muted font-semibold">
               Erst alle Tagesziele schaffen ({totalReached}/{totalGoal} Fächer) – dann freigeschaltet 🔓
             </span>
           </span>
@@ -204,19 +198,16 @@ export function KidToday({ userId }: { userId: number }) {
             const done = s.reached;
             const unit = s.goalType === "count" ? "" : "m";
             return (
-              <div
-                key={s.subjectId}
-                className="flex flex-col items-center gap-3 rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-5"
-              >
+              <div key={s.subjectId} className="sticker flex flex-col items-center gap-3 p-5">
                 <ProgressRing progress={ratio} colorClass={done ? "text-emerald-500" : c.ring}>
                   <Icon className={done ? "text-emerald-500" : c.text} size={22} />
-                  <span className="text-xs text-neutral-500 mt-1 nums">
+                  <span className="text-xs dl-muted mt-1 nums">
                     {hasGoal ? `${s.doneValue}/${s.goalTarget}${unit}` : "frei"}
                   </span>
                 </ProgressRing>
                 <div className="text-center">
-                  <div className="font-semibold">{s.name}</div>
-                  <div className="text-xs text-neutral-500">
+                  <div className="font-extrabold">{s.name}</div>
+                  <div className="text-xs dl-muted font-semibold">
                     {!hasGoal
                       ? "ohne Tagesziel"
                       : s.goalType === "count"
@@ -226,7 +217,7 @@ export function KidToday({ userId }: { userId: number }) {
                 </div>
                 <button
                   onClick={() => router.push(`/kind/${userId}/uebung?subjectId=${s.subjectId}`)}
-                  className={`w-full inline-flex items-center justify-center gap-1.5 rounded-xl ${done ? "bg-emerald-500" : c.bg} text-white font-semibold py-2.5 hover:opacity-90 active:scale-95 transition`}
+                  className={`pill w-full py-2.5 ${done ? "pill-mint" : "pill-peach"}`}
                 >
                   {done ? <Check size={18} /> : <Play size={18} />}
                   {done ? "Weiter üben" : "Loslegen"}
@@ -234,7 +225,7 @@ export function KidToday({ userId }: { userId: number }) {
                 {s.key === "geografie" && (
                   <button
                     onClick={() => router.push(`/kind/${userId}/landkarte`)}
-                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold py-2 text-sm hover:bg-cyan-500/20 transition"
+                    className="pill pill-sky w-full py-2 text-sm"
                   >
                     🗺️ Landkarte
                   </button>

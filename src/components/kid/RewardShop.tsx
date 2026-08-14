@@ -60,23 +60,21 @@ export function RewardShop({ userId }: { userId: number }) {
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-8 flex-1">
       <header className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => router.push(`/kind/${userId}`)}
-          className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-        >
+        <button onClick={() => router.push(`/kind/${userId}`)} className="pill py-2 text-sm">
           <ArrowLeft size={16} /> Zurück
         </button>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-sm font-semibold text-amber-600 dark:text-amber-400">
-          <span className="text-base leading-none">🪙</span> {coins}
-        </span>
+        <span className="pill pill-peach py-2 text-sm">🪙 {coins}</span>
       </header>
 
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-sky-500/10 text-sky-500 mb-3">
+        <div
+          className="inline-flex items-center justify-center size-16 rounded-2xl mb-3 border-[2.5px]"
+          style={{ background: "var(--dl-sky)", borderColor: "#26242b", color: "#26242b" }}
+        >
           <Gift size={30} />
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">Bildschirmzeit</h1>
-        <p className="text-neutral-500 mt-1 text-sm">
+        <h1 className="text-2xl font-extrabold tracking-tight">Bildschirmzeit</h1>
+        <p className="dl-muted mt-1 text-sm font-semibold">
           Tausche deine Coins gegen Bildschirmzeit. Die Coins werden gleich eingesetzt – lehnen
           deine Eltern ab, bekommst du sie zurück.
         </p>
@@ -87,7 +85,7 @@ export function RewardShop({ userId }: { userId: number }) {
           <Loader2 className="animate-spin" />
         </div>
       ) : packages.length === 0 ? (
-        <p className="text-center text-neutral-500 py-8">
+        <p className="text-center dl-muted py-8 font-semibold">
           Noch keine Pakete. Deine Eltern legen sie im Eltern-Bereich an.
         </p>
       ) : (
@@ -99,20 +97,18 @@ export function RewardShop({ userId }: { userId: number }) {
                 key={p.id}
                 onClick={() => request(p)}
                 disabled={!affordable || busyId !== null}
-                className={`flex flex-col items-center gap-2 rounded-2xl border p-5 transition ${
-                  affordable
-                    ? "bg-white dark:bg-neutral-900 border-black/[0.06] dark:border-white/[0.06] hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
-                    : "bg-neutral-100 dark:bg-neutral-900/50 border-transparent opacity-60 cursor-not-allowed"
+                className={`sticker flex flex-col items-center gap-2 p-5 transition ${
+                  affordable ? "hover:-translate-y-0.5" : "opacity-50 cursor-not-allowed"
                 }`}
               >
-                <Clock className="text-sky-500" size={26} />
-                <span className="text-2xl font-bold">{p.minutes}</span>
-                <span className="text-xs text-neutral-500 -mt-1">Minuten</span>
-                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                <Clock size={26} style={{ color: "#26242b" }} />
+                <span className="text-2xl font-extrabold">{p.minutes}</span>
+                <span className="text-xs dl-muted -mt-1 font-bold">Minuten</span>
+                <span className="pill pill-peach mt-1 py-1 px-2.5 text-sm">
                   🪙 {p.coins}
                   {busyId === p.id && <Loader2 className="animate-spin ml-1" size={13} />}
                 </span>
-                {!affordable && <span className="text-[11px] text-neutral-400">noch zu wenig</span>}
+                {!affordable && <span className="text-[11px] dl-muted font-bold">noch zu wenig</span>}
               </button>
             );
           })}
