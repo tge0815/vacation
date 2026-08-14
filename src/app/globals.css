@@ -109,6 +109,15 @@ body {
   outline: 3px solid var(--dl-lilac);
   outline-offset: 2px;
 }
+.pill-sm {
+  padding: 6px 11px;
+  font-size: 0.8rem;
+  gap: 6px;
+  box-shadow: 2.5px 2.5px 0 var(--dl-shadow);
+}
+.pill-sm:active {
+  box-shadow: 0 0 0 var(--dl-shadow);
+}
 .pill-peach { background: var(--dl-peach); color: #26242b; }
 .pill-mint { background: var(--dl-mint); color: #26242b; }
 .pill-lilac { background: var(--dl-lilac); color: #26242b; }

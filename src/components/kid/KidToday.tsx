@@ -74,31 +74,31 @@ export function KidToday({ userId }: { userId: number }) {
   return (
     <main className="relative mx-auto w-full max-w-3xl px-4 py-8 flex-1">
       <Rainbow className="absolute top-2 right-2 hidden sm:block" size={80} />
-      <header className="flex items-center justify-between gap-2 mb-8 flex-wrap">
+      <header className="flex items-center justify-between gap-1.5 mb-7">
         {role === "child" ? (
-          <button onClick={logout} className="pill py-2 text-sm">
-            <LogOut size={16} /> Abmelden
+          <button onClick={logout} className="pill pill-sm">
+            <LogOut size={15} /> <span className="hidden sm:inline">Abmelden</span>
           </button>
         ) : (
-          <button onClick={() => router.push("/")} className="pill py-2 text-sm">
-            <ArrowLeft size={16} /> Profil wechseln
+          <button onClick={() => router.push("/")} className="pill pill-sm">
+            <ArrowLeft size={15} /> <span className="hidden sm:inline">Profil wechseln</span>
           </button>
         )}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5">
           {prog && prog.streak > 0 && (
-            <span className="pill pill-sun py-2 text-sm">
-              <Flame size={16} /> {prog.streak}
+            <span className="pill pill-sm pill-sun">
+              <Flame size={15} /> {prog.streak}
             </span>
           )}
           {user && (
             <>
-              <button onClick={() => router.push(`/kind/${userId}/verlauf`)} className="pill py-2 text-sm" title="Deine gelösten Aufgaben">
-                <History size={16} /> Verlauf
+              <button onClick={() => router.push(`/kind/${userId}/verlauf`)} className="pill pill-sm" title="Deine gelösten Aufgaben">
+                <History size={15} /> <span className="hidden sm:inline">Verlauf</span>
               </button>
-              <button onClick={() => router.push(`/kind/${userId}/belohnung`)} className="pill pill-mint py-2 text-sm" title="Coins gegen Bildschirmzeit eintauschen">
-                <Gift size={16} /> Zeit
+              <button onClick={() => router.push(`/kind/${userId}/belohnung`)} className="pill pill-sm pill-mint" title="Coins gegen Bildschirmzeit eintauschen">
+                <Gift size={15} /> <span className="hidden sm:inline">Zeit</span>
               </button>
-              <button onClick={() => router.push(`/kind/${userId}/spiele`)} className="pill pill-peach py-2 text-sm" title="Coins & Spiele">
+              <button onClick={() => router.push(`/kind/${userId}/spiele`)} className="pill pill-sm pill-peach" title="Coins & Spiele">
                 🪙 {user.coins}
               </button>
             </>
