@@ -7,6 +7,7 @@ import { ProgressRing } from "@/components/ProgressRing";
 import { color } from "@/components/colors";
 import { subjectIcon } from "@/components/subjectIcon";
 import { Rainbow } from "@/components/doodle/Doodles";
+import { KidPath } from "@/components/kid/KidPath";
 import type { PublicUser } from "@/lib/serialize";
 
 type SubjectProgress = {
@@ -147,6 +148,9 @@ export function KidToday({ userId }: { userId: number }) {
         </div>
       )}
 
+      {/* Adaptiver Tagespfad aus den Lern-Auswertungen */}
+      <KidPath userId={userId} />
+
       {/* Spiele-Werkstatt: die Kür – erst nach den Tageszielen freigeschaltet */}
       {werkstattUnlocked ? (
         <button
@@ -184,6 +188,9 @@ export function KidToday({ userId }: { userId: number }) {
         </div>
       )}
 
+      <h2 className="text-lg font-extrabold mb-3">
+        Alle Fächer <span className="dl-muted text-sm font-semibold">· frei üben</span>
+      </h2>
       {!prog ? (
         <div className="flex justify-center py-16 text-neutral-400">
           <Loader2 className="animate-spin" />
