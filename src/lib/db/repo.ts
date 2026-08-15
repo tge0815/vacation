@@ -1000,3 +1000,36 @@ export function setParentPin(familyId: number, pin: string | null): void {
     .prepare("UPDATE families SET parent_pin_hash = ? WHERE id = ?")
     .run(pin ? hashPin(pin) : null, familyId);
 }
+
+// --- Adaptiver Tagesplan (Lernpfad) ---
+
+// Letztes Übungsdatum je Fach (für Spaced Repetition / Mindest-Wiederkehr).
+export function lastPracticedBySubject(userId: number): Map<number, string> {
+  const rows = getDb()
+    .prepare("SELECT subject_id, MAX(date) AS d FROM attempts WHERE user_id = ? GROUP BY subject_id")
+    .all(userId) as Array<{ subject_id: number; d: string }>;
+  return new Map(rows.map((r) => [r.subject_id, r.d]));
+}
+
+export type DailyPlanItem = { subjectId: number; topicId: number | null };
+
+export function getDailyPlan(userId: number, date: string): DailyPlanItem[] | null {
+  const row = getDb()
+    .prepare("SELECT payload FROM daily_plan WHERE user_id = ? AND date = ?")
+    .get(userId, date) as { payload: string } | undefined;
+  if (!row) return null;
+  try {
+    return JSON.parse(row.payload) as DailyPlanItem[];
+  } catch {
+    return null;
+  }
+}
+
+export function setDailyPlan(userId: number, date: string, items: DailyPlanItem[]): void {
+  getDb()
+    .prepare(
+      `INSERT INTO daily_plan (user_id, date, payload, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id, date) DO UPDATE SET payload = excluded.payload`,
+    )
+    .run(userId, date, JSON.stringify(items), Date.now());
+}

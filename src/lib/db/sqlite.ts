@@ -598,6 +598,22 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       `);
     },
   },
+  {
+    // Adaptiver Tagesplan (Lernpfad): pro Kind & Tag einmal ausgewählt und
+    // gespeichert, damit er sich im Laufe des Tages nicht umsortiert.
+    name: "025_daily_plan",
+    run: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS daily_plan (
+          user_id INTEGER NOT NULL,
+          date TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          PRIMARY KEY (user_id, date)
+        );
+      `);
+    },
+  },
 ];
 
 // Themen-Beschreibung fürs Vokabel-Training (eigener Lernbereich). Fragt EIN

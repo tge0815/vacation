@@ -7,7 +7,7 @@ import { ProgressRing } from "@/components/ProgressRing";
 import { color } from "@/components/colors";
 import { subjectIcon } from "@/components/subjectIcon";
 import { Rainbow } from "@/components/doodle/Doodles";
-import { KidPath } from "@/components/kid/KidPath";
+import { KidPath, type PathData } from "@/components/kid/KidPath";
 import type { PublicUser } from "@/lib/serialize";
 
 type SubjectProgress = {
@@ -36,6 +36,7 @@ export function KidToday({ userId }: { userId: number }) {
   const router = useRouter();
   const [user, setUser] = useState<PublicUser | null>(null);
   const [prog, setProg] = useState<Progress | null>(null);
+  const [path, setPath] = useState<PathData | null>(null);
   const [role, setRole] = useState<"parent" | "child" | null>(null);
 
   async function logout() {
@@ -57,6 +58,10 @@ export function KidToday({ userId }: { userId: number }) {
       .then((r) => r.json())
       .then(setProg)
       .catch(() => {});
+    fetch(`/api/path?userId=${userId}`)
+      .then((r) => r.json())
+      .then(setPath)
+      .catch(() => {});
     // Vorrat für alle Fächer im Hintergrund vorwärmen → schnellerer Start.
     fetch("/api/exercise/warm", {
       method: "POST",
@@ -65,12 +70,14 @@ export function KidToday({ userId }: { userId: number }) {
     }).catch(() => {});
   }, [userId]);
 
-  const totalGoal = prog?.subjectsWithGoal ?? 0;
-  const totalReached = prog?.subjectsReached ?? 0;
-  const allDone = totalGoal > 0 && totalReached >= totalGoal;
-  // Spiele-Werkstatt ist sichtbar, aber erst nutzbar, wenn die Tagesziele
-  // erreicht sind (oder gar keine Ziele gesetzt sind).
-  const werkstattUnlocked = totalGoal === 0 || allDone;
+  // Der adaptive Pfad bestimmt jetzt Tages-Fortschritt & Freischaltung:
+  // nur die heute ausgewählten Etappen zählen, nicht mehr alle Fächer.
+  const stepsTotal = path?.requiredTotal ?? 0;
+  const stepsDone = path?.requiredDone ?? 0;
+  const allDone = path?.allRequiredDone ?? false;
+  // Spiele-Werkstatt ist sichtbar, aber erst nutzbar, wenn der heutige
+  // Weg geschafft ist (oder es gar kein Pflichtprogramm gibt).
+  const werkstattUnlocked = allDone;
 
   return (
     <main className="relative mx-auto w-full max-w-3xl px-4 py-8 flex-1">
@@ -124,13 +131,13 @@ export function KidToday({ userId }: { userId: number }) {
         </div>
       )}
 
-      {/* Tagesziel-Balken */}
-      {totalGoal > 0 && (
+      {/* Tages-Fortschritt: nur die heute gewählten Etappen */}
+      {stepsTotal > 0 && (
         <div className="sticker p-4 mb-6">
           <div className="flex justify-between text-sm mb-2">
-            <span className="font-extrabold">Tagesziel</span>
+            <span className="font-extrabold">Dein Weg heute</span>
             <span className="dl-muted nums font-bold">
-              {totalReached} / {totalGoal} Fächer
+              {stepsDone} / {stepsTotal} Etappen
             </span>
           </div>
           <div
@@ -140,7 +147,7 @@ export function KidToday({ userId }: { userId: number }) {
             <div
               className="h-full transition-all duration-500"
               style={{
-                width: `${Math.min(100, totalGoal ? (totalReached / totalGoal) * 100 : 0)}%`,
+                width: `${Math.min(100, stepsTotal ? (stepsDone / stepsTotal) * 100 : 0)}%`,
                 background: allDone ? "#34c77b" : "#f97316",
               }}
             />
@@ -149,7 +156,7 @@ export function KidToday({ userId }: { userId: number }) {
       )}
 
       {/* Adaptiver Tagespfad aus den Lern-Auswertungen */}
-      <KidPath userId={userId} />
+      {path && <KidPath data={path} />}
 
       {/* Spiele-Werkstatt: die Kür – erst nach den Tageszielen freigeschaltet */}
       {werkstattUnlocked ? (
@@ -171,7 +178,7 @@ export function KidToday({ userId }: { userId: number }) {
           <span className="text-2xl">🦊</span>
         </button>
       ) : (
-        <div className="sticker w-full mb-6 flex items-center gap-4 p-4 opacity-90" title="Erst alle Tagesziele schaffen">
+        <div className="sticker w-full mb-6 flex items-center gap-4 p-4 opacity-90" title="Erst den heutigen Weg schaffen">
           <span
             className="shrink-0 size-12 rounded-2xl flex items-center justify-center border-[2.5px] dl-muted"
             style={{ borderColor: "var(--dl-outline)" }}
@@ -181,16 +188,19 @@ export function KidToday({ userId }: { userId: number }) {
           <span className="flex-1">
             <span className="block font-extrabold">Spiele-Werkstatt</span>
             <span className="block text-sm dl-muted font-semibold">
-              Erst alle Tagesziele schaffen ({totalReached}/{totalGoal} Fächer) – dann freigeschaltet 🔓
+              Erst deinen Weg heute schaffen ({stepsDone}/{stepsTotal} Etappen) – dann freigeschaltet 🔓
             </span>
           </span>
           <span className="text-2xl grayscale opacity-60">🦊</span>
         </div>
       )}
 
-      <h2 className="text-lg font-extrabold mb-3">
+      <h2 className="text-lg font-extrabold mb-1">
         Alle Fächer <span className="dl-muted text-sm font-semibold">· frei üben</span>
       </h2>
+      <p className="dl-muted text-sm font-semibold mb-3">
+        Lust auf mehr? Du darfst jederzeit freiwillig weiterüben – jedes Fach ist offen. 💪
+      </p>
       {!prog ? (
         <div className="flex justify-center py-16 text-neutral-400">
           <Loader2 className="animate-spin" />

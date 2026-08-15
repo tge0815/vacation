@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { color } from "@/components/colors";
 import { subjectIcon } from "@/components/subjectIcon";
 
-type Stage = {
+export type Stage = {
   id: string;
   kind: "exercise" | "game" | "map";
   subjectName: string;
@@ -20,7 +19,13 @@ type Stage = {
   href: string;
 };
 
-type PathData = { stages: Stage[]; allRequiredDone: boolean; streak: number };
+export type PathData = {
+  stages: Stage[];
+  allRequiredDone: boolean;
+  requiredTotal: number;
+  requiredDone: number;
+  streak: number;
+};
 
 const REASON_STYLE: Record<Stage["reason"], string> = {
   weak: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
@@ -29,24 +34,8 @@ const REASON_STYLE: Record<Stage["reason"], string> = {
   variety: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
 };
 
-export function KidPath({ userId }: { userId: number }) {
+export function KidPath({ data }: { data: PathData }) {
   const router = useRouter();
-  const [data, setData] = useState<PathData | null>(null);
-
-  useEffect(() => {
-    fetch(`/api/path?userId=${userId}`)
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => setData({ stages: [], allRequiredDone: false, streak: 0 }));
-  }, [userId]);
-
-  if (!data) {
-    return (
-      <div className="flex justify-center py-8 text-neutral-400">
-        <Loader2 className="animate-spin" />
-      </div>
-    );
-  }
   if (data.stages.length === 0) return null;
 
   // Der Fuchs steht an der ersten noch offenen Pflicht-Etappe.
