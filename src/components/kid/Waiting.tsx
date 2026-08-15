@@ -13,7 +13,7 @@ const MESSAGES = [
 // Freundlicher Ladebildschirm mit wechselnden Sprüchen und einem Balken, der
 // langsam vorrückt (die echte Dauer ist unbekannt, aber es fühlt sich lebendig
 // an statt „eingefroren").
-export function LoadingView({ colorBg = "bg-sky-500" }: { colorBg?: string }) {
+export function LoadingView() {
   const [pct, setPct] = useState(8);
   const [msg, setMsg] = useState(0);
 
@@ -34,11 +34,14 @@ export function LoadingView({ colorBg = "bg-sky-500" }: { colorBg?: string }) {
       <div className="text-5xl animate-wiggle" aria-hidden>
         ✏️
       </div>
-      <p className="text-neutral-600 dark:text-neutral-300 font-medium">{MESSAGES[msg]}</p>
-      <div className="w-full max-w-xs h-3 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+      <p className="dl-muted font-semibold">{MESSAGES[msg]}</p>
+      <div
+        className="w-full max-w-xs h-4 rounded-full overflow-hidden border-[2.5px]"
+        style={{ borderColor: "var(--dl-outline)", background: "var(--dl-paper)" }}
+      >
         <div
-          className={`h-full rounded-full ${colorBg} transition-all duration-300`}
-          style={{ width: `${pct}%` }}
+          className="h-full transition-all duration-300"
+          style={{ width: `${pct}%`, background: "#f97316" }}
         />
       </div>
     </div>

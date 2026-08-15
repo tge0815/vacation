@@ -419,26 +419,29 @@ export function ExercisePlayer({
 
       {/* Kopf: Fortschritt + zurück */}
       <header className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <button
-            onClick={() => router.push(`/kind/${userId}`)}
-            className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-          >
-            <ArrowLeft size={16} /> Zurück
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <button onClick={() => router.push(`/kind/${userId}`)} className="pill pill-sm">
+            <ArrowLeft size={15} /> <span className="hidden sm:inline">Zurück</span>
           </button>
-          <span className="text-sm font-medium">
+          <span className="text-sm font-extrabold text-center truncate">
             {meta?.name}
             {gen?.topicName ? ` · ${gen.topicName}` : ""}
           </span>
-          <span className="text-sm text-neutral-500 nums">
+          <span className="text-sm dl-muted nums font-bold min-w-[2.5rem] text-right">
             {goalTarget > 0 ? `${doneValue}/${goalTarget}${unit}` : ""}
           </span>
         </div>
         {goalTarget > 0 && (
-          <div className="h-2 rounded-full bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+          <div
+            className="h-4 rounded-full overflow-hidden border-[2.5px]"
+            style={{ borderColor: "var(--dl-outline)", background: "var(--dl-paper)" }}
+          >
             <div
-              className={`h-full rounded-full transition-all duration-500 ${goalReached ? "bg-emerald-500" : c.bg}`}
-              style={{ width: `${Math.min(100, (doneValue / Math.max(1, goalTarget)) * 100)}%` }}
+              className="h-full transition-all duration-500"
+              style={{
+                width: `${Math.min(100, (doneValue / Math.max(1, goalTarget)) * 100)}%`,
+                background: goalReached ? "#34c77b" : "#f97316",
+              }}
             />
           </div>
         )}
@@ -455,23 +458,20 @@ export function ExercisePlayer({
               <div className="text-7xl animate-wiggle" aria-hidden>
                 🪙
               </div>
-              <h2 className="text-2xl font-bold">10 richtig — +1 Coin!</h2>
-              <p className="text-neutral-500">Stark! Mit Coins kannst du im Spiele-Bereich spielen.</p>
-              <div className="flex gap-3 mt-2">
+              <h2 className="text-2xl font-extrabold">10 richtig — +1 Coin!</h2>
+              <p className="dl-muted font-semibold">Stark! Mit Coins kannst du im Spiele-Bereich spielen.</p>
+              <div className="flex flex-wrap justify-center gap-3 mt-2">
                 <button
                   onClick={() => {
                     setShowCelebrate(false);
                     setCoinAwarded(false);
                     nextExercise();
                   }}
-                  className="rounded-xl bg-emerald-500 text-white px-5 py-2.5 font-semibold hover:opacity-90"
+                  className="pill pill-mint px-6 py-3"
                 >
                   Weiter üben
                 </button>
-                <button
-                  onClick={() => router.push(`/kind/${userId}/spiele`)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-amber-500 text-white px-5 py-2.5 font-semibold hover:opacity-90"
-                >
+                <button onClick={() => router.push(`/kind/${userId}/spiele`)} className="pill pill-sun px-6 py-3">
                   <Gamepad2 size={18} /> Spielen
                 </button>
               </div>
@@ -479,26 +479,23 @@ export function ExercisePlayer({
           ) : (
             <>
               <Trophy size={64} className="text-amber-500" />
-              <h2 className="text-2xl font-bold">Ziel geschafft!</h2>
-              <p className="text-neutral-500">
+              <h2 className="text-2xl font-extrabold">Ziel geschafft!</h2>
+              <p className="dl-muted font-semibold">
                 {isCount
                   ? `Du hast heute ${doneValue} Aufgaben in ${meta?.name} geübt. Super gemacht!`
                   : `Du hast heute ${doneValue} Minuten ${meta?.name} geübt. Super gemacht!`}
               </p>
-              <div className="flex gap-3 mt-2">
+              <div className="flex flex-wrap justify-center gap-3 mt-2">
                 <button
                   onClick={() => {
                     setShowCelebrate(false);
                     nextExercise();
                   }}
-                  className="rounded-xl bg-neutral-200 dark:bg-neutral-800 px-5 py-2.5 font-semibold hover:opacity-90"
+                  className="pill px-6 py-3"
                 >
                   Weiter üben
                 </button>
-                <button
-                  onClick={() => router.push(`/kind/${userId}`)}
-                  className="rounded-xl bg-emerald-500 text-white px-5 py-2.5 font-semibold hover:opacity-90"
-                >
+                <button onClick={() => router.push(`/kind/${userId}`)} className="pill pill-mint px-6 py-3">
                   Fertig für heute
                 </button>
               </div>
@@ -506,27 +503,24 @@ export function ExercisePlayer({
           )}
         </div>
       ) : phase === "loading" ? (
-        <LoadingView colorBg={c.bg} />
+        <LoadingView />
       ) : phase === "error" ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
           <X size={40} className="text-rose-500" />
-          <p className="text-neutral-600 dark:text-neutral-300">{err}</p>
-          <button
-            onClick={nextExercise}
-            className="rounded-xl bg-sky-500 text-white px-5 py-2.5 font-semibold hover:opacity-90"
-          >
+          <p className="dl-muted font-semibold">{err}</p>
+          <button onClick={nextExercise} className="pill pill-sky px-6 py-3">
             Nochmal versuchen
           </button>
         </div>
       ) : ex ? (
         <div className="flex-1 flex flex-col">
           {/* Aufgabenkarte */}
-          <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-6 mb-4">
-            <p className="text-sm font-medium text-neutral-500 mb-2">{ex.instruction}</p>
+          <div className="sticker p-6 mb-4">
+            <p className="text-sm font-bold dl-muted mb-2">{ex.instruction}</p>
             {ex.inputMode === "reading" ? (
-              <p className="text-xl leading-relaxed font-medium">{ex.passage ?? ex.question}</p>
+              <p className="text-xl leading-relaxed font-semibold">{ex.passage ?? ex.question}</p>
             ) : gapsMode ? (
-              <p className="text-sm text-neutral-400">Fülle alle Lücken aus.</p>
+              <p className="text-sm dl-muted font-semibold">Fülle alle Lücken aus.</p>
             ) : (
               <QuestionText text={ex.question} />
             )}
@@ -536,25 +530,24 @@ export function ExercisePlayer({
           {phase === "answer" && (
             <div className="flex flex-col gap-3">
               {ex.inputMode === "choice" && ex.choices ? (
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2.5">
                   {ex.choices.map((opt) => (
                     <button
                       key={opt}
                       onClick={() => setChoice(opt)}
-                      className={`text-left rounded-xl border-2 px-4 py-3 font-medium transition ${
-                        choice === opt
-                          ? `${c.border} ${c.soft}`
-                          : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-300"
+                      className={`text-left rounded-2xl border-[2.5px] px-4 py-3 font-bold transition ${
+                        choice === opt ? c.soft : "hover:-translate-y-0.5"
                       }`}
+                      style={{
+                        borderColor: "var(--dl-outline)",
+                        background: choice === opt ? undefined : "var(--dl-paper)",
+                        boxShadow: choice === opt ? "5px 5px 0 var(--dl-shadow)" : "3px 3px 0 var(--dl-shadow)",
+                      }}
                     >
                       {opt}
                     </button>
                   ))}
-                  <button
-                    onClick={submitAnswer}
-                    disabled={!choice || submitting}
-                    className={`mt-1 inline-flex items-center justify-center gap-2 rounded-xl ${c.bg} text-white font-semibold py-3 disabled:opacity-40 hover:opacity-90`}
-                  >
+                  <button onClick={submitAnswer} disabled={!choice || submitting} className="pill pill-peach w-full py-3 mt-1">
                     {submitting ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
                     Prüfen
                   </button>
@@ -563,7 +556,6 @@ export function ExercisePlayer({
                 <ReadingInput
                   speech={speech}
                   submitting={submitting}
-                  colorBg={c.bg}
                   onEvaluate={submitReading}
                   onSkip={nextExercise}
                 />
@@ -575,7 +567,7 @@ export function ExercisePlayer({
                   }}
                   className="flex flex-col gap-3"
                 >
-                  <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-5 text-lg leading-loose">
+                  <div className="sticker p-5 text-lg leading-loose">
                     {ex.question.split("___").map((seg, i, arr) => (
                       <span key={i}>
                         <span className="whitespace-pre-wrap">{seg}</span>
@@ -587,17 +579,14 @@ export function ExercisePlayer({
                               next[i] = e.target.value;
                               setGapValues(next);
                             }}
-                            className="mx-1 inline-block w-28 align-baseline rounded-lg border-b-2 border-sky-400 bg-sky-50 dark:bg-sky-950/40 px-2 py-0.5 text-base focus:outline-none focus:border-sky-600"
+                            className="mx-1 inline-block w-28 align-baseline rounded-lg border-[2.5px] px-2 py-0.5 text-base font-semibold focus:outline-none"
+                            style={{ borderColor: "var(--dl-outline)", background: "var(--dl-sky)", color: "#26242b" }}
                           />
                         )}
                       </span>
                     ))}
                   </div>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className={`inline-flex items-center justify-center gap-2 rounded-xl ${c.bg} text-white font-semibold py-3 disabled:opacity-40 hover:opacity-90`}
-                  >
+                  <button type="submit" disabled={submitting} className="pill pill-peach w-full py-3">
                     {submitting ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                     Prüfen
                   </button>
@@ -622,13 +611,10 @@ export function ExercisePlayer({
                           ? "Deine Zahl"
                           : "Deine Antwort"
                     }
-                    className="w-full rounded-xl border-2 border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 px-4 py-3 text-lg focus:border-sky-500 focus:outline-none"
+                    className="w-full rounded-2xl border-[2.5px] px-4 py-3 text-lg font-semibold focus:outline-none"
+                    style={{ borderColor: "var(--dl-outline)", background: "var(--dl-paper)", boxShadow: "3px 3px 0 var(--dl-shadow)" }}
                   />
-                  <button
-                    type="submit"
-                    disabled={!answer.trim() || submitting}
-                    className={`inline-flex items-center justify-center gap-2 rounded-xl ${c.bg} text-white font-semibold py-3 disabled:opacity-40 hover:opacity-90`}
-                  >
+                  <button type="submit" disabled={!answer.trim() || submitting} className="pill pill-peach w-full py-3">
                     {submitting ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                     Prüfen
                   </button>
@@ -650,27 +636,24 @@ export function ExercisePlayer({
                 />
               )}
               <div
-                className={`rounded-2xl p-5 ${
-                  grade.isCorrect
-                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                    : "bg-rose-500/10 text-rose-700 dark:text-rose-400"
-                }`}
+                className="sticker p-5"
+                style={{ background: grade.isCorrect ? "var(--dl-green)" : "var(--dl-pink)", color: "#26242b" }}
               >
-                <div className="flex items-center gap-2 font-bold text-lg mb-1">
+                <div className="flex items-center gap-2 font-extrabold text-lg mb-1">
                   {grade.isCorrect ? <Check size={22} /> : <X size={22} />}
                   {grade.isCorrect ? "Richtig!" : "Nicht ganz."}
                   {typeof grade.accuracyPct === "number" && (
-                    <span className="ml-auto text-sm font-medium">{grade.accuracyPct}% gelesen</span>
+                    <span className="ml-auto text-sm font-bold">{grade.accuracyPct}% gelesen</span>
                   )}
                 </div>
-                <p className="text-neutral-700 dark:text-neutral-200">{grade.feedback}</p>
+                <p className="font-semibold">{grade.feedback}</p>
                 {grade.correction && (
-                  <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300">
-                    <span className="font-semibold">Richtig wäre:</span> {grade.correction}
+                  <p className="mt-2 text-sm font-semibold">
+                    <span className="font-extrabold">Richtig wäre:</span> {grade.correction}
                   </p>
                 )}
                 {grade.missedWords && grade.missedWords.length > 0 && (
-                  <p className="mt-2 text-sm">Üben: {grade.missedWords.join(", ")}</p>
+                  <p className="mt-2 text-sm font-semibold">Üben: {grade.missedWords.join(", ")}</p>
                 )}
               </div>
               <button
@@ -682,7 +665,7 @@ export function ExercisePlayer({
                     nextExercise();
                   }
                 }}
-                className={`inline-flex items-center justify-center gap-2 rounded-xl ${pendingCelebrate ? "bg-amber-500" : c.bg} text-white font-semibold py-3 hover:opacity-90`}
+                className={`pill w-full py-3 ${pendingCelebrate ? "pill-sun" : "pill-peach"}`}
               >
                 {pendingCelebrate ? (
                   <>🎉 {coinAwarded ? "Belohnung!" : "Ziel geschafft!"}</>
@@ -742,7 +725,7 @@ function GapReview({
   };
   const segs = question.split("___");
   return (
-    <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-5 text-lg leading-loose">
+    <div className="sticker p-5 text-lg leading-loose">
       {segs.map((seg, i, arr) => {
         const hasGap = i < arr.length - 1;
         const given = (answers[i] ?? "").trim();
@@ -777,25 +760,23 @@ function GapReview({
 function ReadingInput({
   speech,
   submitting,
-  colorBg,
   onEvaluate,
   onSkip,
 }: {
   speech: ReturnType<typeof useSpeech>;
   submitting: boolean;
-  colorBg: string;
   onEvaluate: () => void;
   onSkip: () => void;
 }) {
   if (!speech.supported) {
     return (
-      <div className="rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 p-4 text-sm">
-        <p className="font-medium mb-1">Vorlesen geht hier gerade nicht.</p>
+      <div className="sticker p-4 text-sm font-semibold" style={{ background: "var(--dl-sun)", color: "#26242b" }}>
+        <p className="font-extrabold mb-1">Vorlesen geht hier gerade nicht.</p>
         <p>
           Dein Browser oder die Verbindung erlaubt kein Mikrofon. Vorlesen funktioniert am besten in
           Chrome über <span className="font-mono">localhost</span> oder eine HTTPS-Adresse.
         </p>
-        <button onClick={onSkip} className="mt-3 rounded-lg bg-neutral-200 dark:bg-neutral-800 px-4 py-2 font-semibold">
+        <button onClick={onSkip} className="pill pill-sm mt-3">
           Aufgabe überspringen
         </button>
       </div>
@@ -807,24 +788,23 @@ function ReadingInput({
         <button
           type="button"
           onClick={() => (speech.listening ? speech.stop() : speech.start())}
-          className={`inline-flex items-center gap-2 rounded-full px-8 py-4 text-lg font-semibold text-white transition active:scale-95 ${
-            speech.listening ? "bg-rose-500 animate-rec" : colorBg
-          }`}
+          className={`pill text-lg px-8 py-4 ${speech.listening ? "animate-rec" : "pill-peach"}`}
+          style={speech.listening ? { background: "#f43f5e", color: "#fff" } : undefined}
         >
           {speech.listening ? <Square size={22} /> : <Mic size={22} />}
           {speech.listening ? "Stopp" : "Vorlesen starten"}
         </button>
       </div>
       {speech.transcript && (
-        <div className="rounded-xl bg-neutral-100 dark:bg-neutral-800 p-3 text-sm text-neutral-600 dark:text-neutral-300">
-          <span className="font-medium">Ich habe gehört:</span> {speech.transcript}
+        <div className="sticker p-3 text-sm font-semibold">
+          <span className="font-extrabold">Ich habe gehört:</span> {speech.transcript}
         </div>
       )}
-      {speech.error && <p className="text-sm text-rose-500">{speech.error}</p>}
+      {speech.error && <p className="text-sm font-semibold text-rose-500">{speech.error}</p>}
       <button
         onClick={onEvaluate}
         disabled={!speech.transcript.trim() || speech.listening || submitting}
-        className={`inline-flex items-center justify-center gap-2 rounded-xl ${colorBg} text-white font-semibold py-3 disabled:opacity-40 hover:opacity-90`}
+        className="pill pill-mint w-full py-3"
       >
         {submitting ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
         Auswerten
