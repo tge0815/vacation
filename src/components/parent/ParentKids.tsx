@@ -1,11 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Pencil, Check, X, Loader2, KeyRound, UserCircle2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, Loader2, KeyRound, UserCircle2, Clock } from "lucide-react";
 import { COLOR_NAMES, color } from "@/components/colors";
 import type { PublicUser } from "@/lib/serialize";
 
 const EMOJIS = ["🦊", "🐼", "🦁", "🐯", "🐸", "🐙", "🦄", "🐝", "🦖", "🐬", "🦉", "🦆", "🐰", "🚀", "⚽", "🎨", "🎸"];
+
+// „zuletzt aktiv" menschlich: heute / gestern / vor N Tagen / Datum.
+function lastSeen(ms: number | null): string {
+  if (!ms) return "noch nie angemeldet";
+  const days = Math.floor((Date.now() - ms) / 86_400_000);
+  if (days <= 0) return "heute aktiv";
+  if (days === 1) return "gestern aktiv";
+  if (days < 7) return `vor ${days} Tagen aktiv`;
+  return "zuletzt " + new Date(ms).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 
 type Draft = {
   name: string;
@@ -153,6 +163,9 @@ export function ParentKids() {
                     <KeyRound size={12} /> kein Login
                   </span>
                 )}
+                <span className="inline-flex items-center gap-1">
+                  <Clock size={12} /> {lastSeen(u.lastLoginAt)}
+                </span>
               </div>
             </div>
             <button onClick={() => startEdit(u)} className="text-neutral-400 hover:text-sky-500 p-2">

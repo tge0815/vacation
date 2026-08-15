@@ -1,8 +1,10 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   getDb,
   type UserRow,
   type FamilyRow,
+  type AdminRow,
+  type InviteCodeRow,
   type SubjectRow,
   type TopicRow,
   type GoalRow,
@@ -52,6 +54,162 @@ export function verifyFamilyLogin(email: string, password: string): FamilyRow | 
   const fam = getFamilyByEmail(email);
   if (!fam) return null;
   return verifyPassword(password, fam.password_hash) ? fam : null;
+}
+
+// Letzten Login-Zeitpunkt merken.
+export function touchFamilyLogin(id: number): void {
+  getDb().prepare("UPDATE families SET last_login_at = ? WHERE id = ?").run(Date.now(), id);
+}
+export function touchUserLogin(id: number): void {
+  getDb().prepare("UPDATE users SET last_login_at = ? WHERE id = ?").run(Date.now(), id);
+}
+
+// --- Admin (Mandanten-Verwaltung) ---
+
+export type FamilyStat = {
+  id: number;
+  name: string;
+  email: string;
+  kids: number;
+  lastLogin: number | null;
+  createdAt: number;
+};
+
+// Alle Familien mit Kennzahlen für den Admin-Bereich.
+export function listFamiliesWithStats(): FamilyStat[] {
+  return getDb()
+    .prepare(
+      `SELECT f.id, f.name, f.email, f.created_at AS createdAt, f.last_login_at AS lastLogin,
+              (SELECT COUNT(*) FROM users u WHERE u.family_id = f.id) AS kids
+         FROM families f
+        ORDER BY f.created_at ASC`,
+    )
+    .all() as FamilyStat[];
+}
+
+// Familie samt aller abhängigen Daten löschen. Da nicht alle Tabellen eine
+// FOREIGN-KEY-Kaskade haben, räumen wir dynamisch alle Tabellen auf, die eine
+// user_id- oder family_id-Spalte besitzen — in einer Transaktion.
+export function deleteFamily(familyId: number): boolean {
+  const db = getDb();
+  if (!getFamily(familyId)) return false;
+  const userIds = (
+    db.prepare("SELECT id FROM users WHERE family_id = ?").all(familyId) as Array<{ id: number }>
+  ).map((u) => u.id);
+  const KEEP = new Set([
+    "_migrations",
+    "families",
+    "users",
+    "admins",
+    "invite_codes",
+    "subjects",
+    "topics",
+    "meta",
+  ]);
+  const tables = (
+    db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+      .all() as Array<{ name: string }>
+  )
+    .map((t) => t.name)
+    .filter((n) => !KEEP.has(n));
+
+  const tx = db.transaction(() => {
+    for (const t of tables) {
+      const cols = (db.prepare(`PRAGMA table_info(${t})`).all() as Array<{ name: string }>).map(
+        (c) => c.name,
+      );
+      if (cols.includes("user_id") && userIds.length > 0) {
+        const ph = userIds.map(() => "?").join(",");
+        db.prepare(`DELETE FROM ${t} WHERE user_id IN (${ph})`).run(...userIds);
+      }
+      if (cols.includes("family_id")) {
+        db.prepare(`DELETE FROM ${t} WHERE family_id = ?`).run(familyId);
+      }
+    }
+    db.prepare("DELETE FROM users WHERE family_id = ?").run(familyId);
+    db.prepare("DELETE FROM families WHERE id = ?").run(familyId);
+  });
+  tx();
+  return true;
+}
+
+export function getAdmin(id: number): AdminRow | null {
+  return (getDb().prepare("SELECT * FROM admins WHERE id = ?").get(id) as AdminRow) ?? null;
+}
+
+export function verifyAdminLogin(username: string, password: string): AdminRow | null {
+  const row = getDb()
+    .prepare("SELECT * FROM admins WHERE username = ?")
+    .get(username.trim()) as AdminRow | undefined;
+  if (!row) return null;
+  return verifyPassword(password, row.password_hash) ? row : null;
+}
+
+export function touchAdminLogin(id: number): void {
+  getDb().prepare("UPDATE admins SET last_login_at = ? WHERE id = ?").run(Date.now(), id);
+}
+
+// --- Einladungscodes ---
+
+// Gut lesbarer Code ohne verwechselbare Zeichen (kein 0/O/1/I/L).
+function genInviteCode(): string {
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const bytes = randomBytes(8);
+  let s = "";
+  for (let i = 0; i < 8; i++) s += alphabet[bytes[i] % alphabet.length];
+  return `LC-${s.slice(0, 4)}-${s.slice(4, 8)}`;
+}
+
+export function getInviteCode(id: number): InviteCodeRow | null {
+  return (getDb().prepare("SELECT * FROM invite_codes WHERE id = ?").get(id) as InviteCodeRow) ?? null;
+}
+
+export function listInviteCodes(): InviteCodeRow[] {
+  return getDb()
+    .prepare("SELECT * FROM invite_codes ORDER BY created_at DESC")
+    .all() as InviteCodeRow[];
+}
+
+export function createInviteCode(opts: {
+  label?: string | null;
+  maxUses?: number | null;
+  expiresAt?: number | null;
+  createdBy?: number | null;
+}): InviteCodeRow {
+  const db = getDb();
+  let code = genInviteCode();
+  while (db.prepare("SELECT 1 FROM invite_codes WHERE code = ?").get(code)) code = genInviteCode();
+  const info = db
+    .prepare(
+      `INSERT INTO invite_codes (code, label, max_uses, used_count, expires_at, revoked, created_by, created_at)
+       VALUES (?, ?, ?, 0, ?, 0, ?, ?)`,
+    )
+    .run(code, opts.label ?? null, opts.maxUses ?? null, opts.expiresAt ?? null, opts.createdBy ?? null, Date.now());
+  return getInviteCode(Number(info.lastInsertRowid))!;
+}
+
+export function revokeInviteCode(id: number): boolean {
+  return getDb().prepare("UPDATE invite_codes SET revoked = 1 WHERE id = ?").run(id).changes > 0;
+}
+
+export function deleteInviteCode(id: number): boolean {
+  return getDb().prepare("DELETE FROM invite_codes WHERE id = ?").run(id).changes > 0;
+}
+
+// Bei der Registrierung: Code prüfen und – wenn gültig – eine Nutzung zählen.
+export function consumeInviteCode(code: string): boolean {
+  const db = getDb();
+  const norm = code.trim().toUpperCase();
+  const row = db.prepare("SELECT * FROM invite_codes WHERE code = ?").get(norm) as
+    | InviteCodeRow
+    | undefined;
+  if (!row) return false;
+  if (row.revoked) return false;
+  if (row.expires_at != null && row.expires_at < Date.now()) return false;
+  if (row.max_uses != null && row.used_count >= row.max_uses) return false;
+  db.prepare("UPDATE invite_codes SET used_count = used_count + 1 WHERE id = ?").run(row.id);
+  return true;
 }
 
 // --- Users (Kinder, immer einer Familie zugeordnet) ---

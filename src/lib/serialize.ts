@@ -10,6 +10,7 @@ export type PublicUser = {
   username: string | null;
   hasLogin: boolean;
   coins: number;
+  lastLoginAt: number | null;
 };
 
 export function publicUser(u: UserRow): PublicUser {
@@ -22,6 +23,7 @@ export function publicUser(u: UserRow): PublicUser {
     username: u.username ?? null,
     hasLogin: Boolean(u.username && u.password_hash),
     coins: u.coins ?? 0,
+    lastLoginAt: u.last_login_at ?? null,
   };
 }
 

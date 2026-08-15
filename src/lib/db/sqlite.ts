@@ -614,7 +614,73 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       `);
     },
   },
+  {
+    // Eigener Admin-Login (getrennt von den Familien). Wird beim Start aus
+    // LEARN_ADMIN_USER / LEARN_ADMIN_PASSWORD befüllt (siehe seedAdminFromEnv).
+    name: "026_admins",
+    sql: `
+      CREATE TABLE IF NOT EXISTS admins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        last_login_at INTEGER
+      );
+    `,
+  },
+  {
+    // Widerrufbare Einladungscodes statt eines einzigen .env-Codes.
+    // max_uses NULL = unbegrenzt, expires_at NULL = kein Ablauf.
+    name: "027_invite_codes",
+    sql: `
+      CREATE TABLE IF NOT EXISTS invite_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT NOT NULL UNIQUE,
+        label TEXT,
+        max_uses INTEGER,
+        used_count INTEGER NOT NULL DEFAULT 0,
+        expires_at INTEGER,
+        revoked INTEGER NOT NULL DEFAULT 0,
+        created_by INTEGER,
+        created_at INTEGER NOT NULL
+      );
+    `,
+  },
+  {
+    // Letzter Login je Familie (Eltern) und je Kind.
+    name: "028_last_login",
+    run: (db) => {
+      const famCols = db.prepare("PRAGMA table_info(families)").all() as Array<{ name: string }>;
+      if (!famCols.some((c) => c.name === "last_login_at")) {
+        db.exec("ALTER TABLE families ADD COLUMN last_login_at INTEGER");
+      }
+      const userCols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+      if (!userCols.some((c) => c.name === "last_login_at")) {
+        db.exec("ALTER TABLE users ADD COLUMN last_login_at INTEGER");
+      }
+    },
+  },
 ];
+
+// Admin-Konto aus den Umgebungsvariablen sicherstellen. Die .env ist die
+// Quelle der Wahrheit: Ist ein Konto vorhanden, wird bei jedem Start das
+// Passwort auf den .env-Wert gesetzt (bequemes Zurücksetzen/Rotieren).
+function seedAdminFromEnv(database: Database.Database) {
+  const username = (process.env.LEARN_ADMIN_USER ?? "").trim();
+  const password = process.env.LEARN_ADMIN_PASSWORD ?? "";
+  if (!username || !password) return;
+  const hash = hashPassword(password);
+  const existing = database.prepare("SELECT id FROM admins WHERE username = ?").get(username) as
+    | { id: number }
+    | undefined;
+  if (existing) {
+    database.prepare("UPDATE admins SET password_hash = ? WHERE id = ?").run(hash, existing.id);
+  } else {
+    database
+      .prepare("INSERT INTO admins (username, password_hash, created_at) VALUES (?, ?, ?)")
+      .run(username, hash, Date.now());
+  }
+}
 
 // Themen-Beschreibung fürs Vokabel-Training (eigener Lernbereich). Fragt EIN
 // Wort/eine kurze Wendung ab, Richtung wechselt (Deutsch↔Englisch).
@@ -820,6 +886,7 @@ export function getDb(): Database.Database {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   runMigrations(db);
+  seedAdminFromEnv(db);
   return db;
 }
 
@@ -839,6 +906,7 @@ export type UserRow = {
   coins: number;
   correct_coins: number;
   created_at: number;
+  last_login_at: number | null;
 };
 
 export type FamilyRow = {
@@ -847,6 +915,27 @@ export type FamilyRow = {
   email: string;
   password_hash: string;
   parent_pin_hash: string | null;
+  created_at: number;
+  last_login_at: number | null;
+};
+
+export type AdminRow = {
+  id: number;
+  username: string;
+  password_hash: string;
+  created_at: number;
+  last_login_at: number | null;
+};
+
+export type InviteCodeRow = {
+  id: number;
+  code: string;
+  label: string | null;
+  max_uses: number | null;
+  used_count: number;
+  expires_at: number | null;
+  revoked: number;
+  created_by: number | null;
   created_at: number;
 };
 

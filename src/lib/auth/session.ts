@@ -10,7 +10,7 @@
 export const SESSION_COOKIE = "lf_session";
 const TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 Tage
 
-export type SessionRole = "parent" | "child";
+export type SessionRole = "parent" | "child" | "admin";
 export type Session = { familyId: number; role: SessionRole; userId: number };
 
 function secret(): string {
@@ -54,7 +54,7 @@ export async function signSession(
   userId = 0,
 ): Promise<string> {
   const exp = Date.now() + TTL_MS;
-  const r = role === "child" ? "k" : "p";
+  const r = role === "child" ? "k" : role === "admin" ? "a" : "p";
   const payload = `${familyId}.${r}.${userId}.${exp}`;
   const sig = await hmac(payload);
   return `${payload}.${sig}`;
@@ -71,10 +71,15 @@ export async function verifySession(token: string | undefined | null): Promise<S
     const expected = await hmac(`${famStr}.${r}.${uidStr}.${expStr}`);
     if (!timingSafeEqualStr(sig, expected)) return null;
     if (!expValid(expStr)) return null;
+    if (r !== "p" && r !== "k" && r !== "a") return null;
     const familyId = Number(famStr);
-    if (!posInt(familyId)) return null;
-    if (r !== "p" && r !== "k") return null;
     const userId = Number(uidStr);
+    // Admin gehört zu keiner Familie (familyId 0), braucht aber eine userId.
+    if (r === "a") {
+      if (!posInt(userId)) return null;
+      return { familyId: 0, role: "admin", userId };
+    }
+    if (!posInt(familyId)) return null;
     if (r === "k" && !posInt(userId)) return null;
     return { familyId, role: r === "k" ? "child" : "parent", userId: r === "k" ? userId : 0 };
   }

@@ -21,9 +21,10 @@ export async function proxy(req: NextRequest) {
     url.search = "";
     return url;
   };
-  // Startseite je nach Rolle: Kind direkt in seinen Bereich, Eltern zur Auswahl.
+  // Startseite je nach Rolle: Kind in seinen Bereich, Admin in den Admin-Bereich,
+  // Eltern zur Kinder-Auswahl.
   const homeFor = (s: NonNullable<typeof session>) =>
-    s.role === "child" ? `/kind/${s.userId}` : "/";
+    s.role === "child" ? `/kind/${s.userId}` : s.role === "admin" ? "/admin" : "/";
 
   if (isPublic) {
     // Bereits angemeldet? Login/Register überspringen → zur passenden Startseite.
@@ -38,6 +39,17 @@ export async function proxy(req: NextRequest) {
       return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
     }
     return NextResponse.redirect(to("/login"));
+  }
+
+  // Admin: nur der /admin-Bereich ist erreichbar (Seiten). Umgekehrt darf
+  // niemand außer dem Admin nach /admin. Die /api/admin-Endpunkte sichern sich
+  // zusätzlich selbst über requireAdmin ab.
+  if (!isApi) {
+    if (session.role === "admin") {
+      if (!pathname.startsWith("/admin")) return NextResponse.redirect(to("/admin"));
+    } else if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+      return NextResponse.redirect(to(homeFor(session)));
+    }
   }
 
   // Kind-Login: nur der eigene Kind-Bereich ist erreichbar (Seiten). Die

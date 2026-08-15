@@ -41,6 +41,15 @@ export async function requireParent(req: NextRequest): Promise<number | NextResp
   return s.familyId;
 }
 
+// Nur Admin (Familien-Verwaltung, Einladungscodes). Gibt die Admin-ID zurück
+// oder eine fertige Fehler-Antwort (401/403).
+export async function requireAdmin(req: NextRequest): Promise<number | NextResponse> {
+  const s = await sessionFrom(req);
+  if (!s) return unauthorized();
+  if (s.role !== "admin") return forbidden();
+  return s.userId;
+}
+
 // Prüft Login UND Zugriff auf ein bestimmtes Kind:
 // - Eltern: jedes Kind der eigenen Familie.
 // - Kind: ausschließlich das EIGENE Profil.

@@ -26,11 +26,20 @@ services:
       LEARN_DATA_DIR: "/data"
 
       # === Login / Mehr-Familien ===
+      # Fester Notfall-Einladungscode (Fallback). Der eigentliche Weg sind die
+      # widerrufbaren Einzelcodes aus dem Admin-Bereich.
       LEARN_INVITE_CODE: "${LEARN_INVITE_CODE:-bitte-aendern}"
       LEARN_SESSION_SECRET: "${LEARN_SESSION_SECRET:-bitte-aendern}"
       LEARN_DEFAULT_FAMILY_EMAIL: "${LEARN_DEFAULT_FAMILY_EMAIL:-eltern@local}"
       LEARN_DEFAULT_FAMILY_PASSWORD: "${LEARN_DEFAULT_FAMILY_PASSWORD:-lernen}"
       LEARN_COOKIE_SECURE: "${LEARN_COOKIE_SECURE:-0}"
+
+      # === Admin-Konto (verwaltet Familien & Einladungscodes) ===
+      # Beide setzen, Container neu starten → danach Login unter /login mit
+      # diesem Benutzernamen (ohne @). Das Passwort wird bei jedem Start aus
+      # der .env übernommen (bequemes Zurücksetzen). Leer lassen = kein Admin.
+      LEARN_ADMIN_USER: "${LEARN_ADMIN_USER:-}"
+      LEARN_ADMIN_PASSWORD: "${LEARN_ADMIN_PASSWORD:-}"
 
     volumes:
       # SQLite-DB — persistiert!
