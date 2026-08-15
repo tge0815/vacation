@@ -75,6 +75,26 @@ Zero-Data-Retention-Vertrag. Laut Report für eine Handvoll Kinder unverhältnis
       Überarbeitung. Inhalte gegen das prüfen, was die App heute generiert.
       *Diese Angabe vor einer Umsetzung direkt an der Primärquelle bestätigen.*
 
+## Geschäftsmodell und Kosten — entschieden
+
+Recherche: [`docs/research/2026-08-15-geschaeftsmodell-kosten.md`](docs/research/2026-08-15-geschaeftsmodell-kosten.md)
+
+- **Keine Monetarisierung.** Die KI-Kosten liegen bei etwa **0,25–0,78 € pro Kind und Monat**,
+  für alle drei Kinder zusammen unter **3 € im Monat**. Werbung scheidet rechtlich aus
+  (UWG Anh. Nr. 28, JMStV § 6, DSGVO Art. 8) und wirtschaftlich mangels Reichweite. Ein Abo
+  würde die Kosten zwar decken, aber Gewerbeanmeldung, Impressumspflicht, AGB, Widerrufsrecht
+  und Zahlungsdienstleister stehen bei drei Kindern in keinem Verhältnis zum Ertrag.
+  **Weg:** Kosten selbst tragen, allenfalls informelle Kostenbeteiligung der Nachbarfamilie.
+
+- [ ] **Prompt Caching bringt hier nichts — nicht einbauen.** Der größte Systemprompt
+      (`exerciseBatchSystemPrompt()`, geschätzt ~1.350 Token) liegt unter der Mindestlänge von
+      4.096 Token, ab der Haiku 4.5 überhaupt cached. Steht hier, damit es niemand später als
+      vermeintlich offensichtliche Optimierung nachbaut.
+
+- [ ] **Kostentreiber ist die Aufgabenzahl, nicht der Prompt.** Output-Tokens kosten bei Haiku
+      das Fünffache der Input-Tokens. Wer sparen will, reduziert die Zahl generierter Aufgaben
+      pro Lauf — nicht die Prompt-Länge.
+
 ## Nice to have
 
 - [ ] **Streak-Reset ohne Gnadenfrist entschärfen**
