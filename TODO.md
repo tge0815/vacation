@@ -6,11 +6,10 @@ Stand: 2026-08-15. Gepflegt im Repo, damit der Stand versioniert ist und nicht i
 > und ausgewertet sind. Die Einträge unten sind erfasst und priorisiert, aber bewusst noch offen.
 > Grundlage sind die Reports in [`docs/research/`](docs/research/).
 
-## Offene Recherchen
+## Recherchen
 
-- [ ] **Datenschutz / DSGVO** — Recherche läuft, Report folgt unter
-      `docs/research/2026-08-15-datenschutz-dsgvo.md`. Ergebnis kann Punkte in diesem Dokument
-      verschieben oder ergänzen, insbesondere alles rund um die Mitnutzung durch fremde Familien.
+Alle drei abgeschlossen, Reports in [`docs/research/`](docs/research/):
+Marktanalyse, Lehrplan-Datenquellen, Datenschutz/DSGVO.
 
 ## Kritisch
 
@@ -25,12 +24,43 @@ Stand: 2026-08-15. Gepflegt im Repo, damit der Stand versioniert ist und nicht i
       **Bewertung** (`gradeExercise`, `gradeSystemPrompt`, `grade_json`), nicht Klassenstufe.
       Die Namenskollision ist die wahrscheinliche Ursache des Fehlers — beim Fix nicht wiederholen.
 
+- [ ] **Nachbarskind: eigene Family oder gemeinsame?**
+      `buildContext()` in `src/lib/ai/coach.ts` schickt für den Eltern-Coach **alle Kinder einer
+      `familyId`** mit Klarnamen, Klassenstufe, Streak, Trefferquoten und den Fragetexten der
+      letzten Aufgaben an Anthropic. Liegt das Nachbarskind in derselben Family, landen dessen
+      Klarname und Leistungsdaten im Coach-Chat der eigenen Eltern — und damit beim KI-Anbieter.
+      *Verifiziert am 2026-08-15 direkt im Code.*
+      Das ist eine Designentscheidung, die vor jeder Umsetzung fallen muss.
+
+- [ ] **Spracherkennung schickt Rohaudio an einen unbeteiligten Dritten**
+      `src/components/kid/useSpeech.ts` nutzt `webkitSpeechRecognition` (Web Speech API). In
+      Chromium wird das Audio dafür zur Erkennung an Google übertragen — ein vierter Empfänger,
+      der in der App nirgends erwähnt wird und mit dem es keine Vereinbarung gibt.
+      *Verifiziert am 2026-08-15 direkt im Code.*
+      Optionen: Funktion für fremde Kinder abschaltbar machen, offenlegen, oder lokale Erkennung.
+
 ## Wichtig
 
-- [ ] **Selbstbedienung für Datenexport und -löschung**
-      Kein sichtbarer Weg, die Daten einer Familie zu exportieren oder zu löschen. Solange nur die
-      eigenen Kinder die App nutzen, verschmerzbar; mit fremden Familien eine Erwartung.
-      Genauer Umfang hängt am DSGVO-Report — deshalb noch nicht ausformuliert.
+### Datenschutz — unverzichtbar, sobald das Nachbarskind mitnutzt
+
+- [ ] **Schriftliche Einwilligung der Nachbarseltern.** Nach Art. 8 DSGVO ist für ein Kind unter
+      16 die Einwilligung der Erziehungsberechtigten nötig, nach Art. 7 Abs. 1 nachweisbar.
+      Die bestehende mündliche Absprache erfüllt die Nachweisbarkeit nicht. Ein kurzes Formular
+      reicht — es geht um Nachweis, nicht um Formalität.
+- [ ] **Kindgerechte Datenschutzinfo** (Art. 12 Abs. 1 verlangt für Kinder verständliche Sprache)
+      plus **sichtbarer Hinweis im UI, dass eine KI mitliest und bewertet**.
+- [ ] **Selbstbedienung für Datenexport und -löschung.** Bisher gibt es keinen Weg dahin.
+
+### Datenschutz — gute Praxis
+
+- [ ] Pseudonyme statt Klarnamen verwenden, insbesondere in allem, was an die API geht.
+- [ ] Löschfristen definieren und umsetzen — `src/lib/db/sqlite.ts` speichert Klarnamen,
+      Freitextantworten (`attempts.answer_text`) und bei Vorlese-Aufgaben das volle
+      Sprach-Transkript dauerhaft, ohne jeden Verfallmechanismus.
+- [ ] Datensparsamkeit gegenüber der API: prüfen, welche Felder wirklich mitgeschickt werden müssen.
+
+*Ausdrücklich **kein** Handlungsbedarf für diesen Fall: EU-Datenresidenz oder ein
+Zero-Data-Retention-Vertrag. Laut Report für eine Handvoll Kinder unverhältnismäßig.*
 
 - [ ] **Curriculum-Daten strukturiert verfügbar machen**
       Es gibt **keine** bundesweit maschinenlesbare Lehrplanquelle; Realität sind 16 Länderportale
@@ -88,3 +118,10 @@ Stand: 2026-08-15. Gepflegt im Repo, damit der Stand versioniert ist und nicht i
 - [ ] Preis- und Anbieterangaben der Marktanalyse stammen teils aus Sekundärquellen — mehrere
       Anbieterseiten waren über den Recherche-Proxy blockiert. Vor einer Entscheidung, die an
       konkreten Preisen hängt, direkt beim Anbieter verifizieren.
+
+- [ ] Anthropics DPA, Standardvertragsklauseln und DPF-Zertifizierung konnten nur über
+      Sekundärquellen bestätigt werden — der Proxy blockierte sämtliche anthropic.com-Subdomains.
+      Vor einer verbindlichen Einschätzung an der Primärquelle nachlesen.
+
+- [ ] Die rechtliche Bewertung insgesamt ist ein recherchierter Sachstand, kein Rechtsrat.
+      Für eine verbindliche Beurteilung: Datenschutz-Fachperson oder die LfD Niedersachsen.
