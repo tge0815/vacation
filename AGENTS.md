@@ -23,3 +23,20 @@ vor dem Coden den passenden Guide in `node_modules/next/dist/docs/` lesen.
 Die Web Speech API (Spracherkennung) braucht einen Secure Context: `localhost`
 oder HTTPS. Über `http://<lan-ip>:3001` blockieren Browser das Mikrofon — für
 LAN-Nutzung einen HTTPS-Reverse-Proxy davorstellen. Am zuverlässigsten in Chromium.
+
+## Entscheidungen liegen beim Auftraggeber
+
+Recherchen, Analysen und Abwägungen sind **Entscheidungsvorlagen**, keine Entscheidungen.
+Agenten und Assistenten liefern Faktenlage, Optionen mit Vor- und Nachteilen und auf Wunsch
+eine begründete Empfehlung — die Wahl trifft der Mensch.
+
+Konkret heißt das:
+
+- **Keine Entscheidung als getroffen darstellen**, die nicht ausdrücklich getroffen wurde.
+  Nicht in Dateien, nicht in Commit-Messages, nicht in Zusammenfassungen. Ergebnisse gehören
+  als „Faktenlage, Entscheidung offen" markiert, bis der Auftraggeber sich festgelegt hat.
+- **Den Auftrag nicht umdeuten.** Wer nach einem Geschäftsmodell fragt, hat nicht nach der
+  Frage gefragt, ob sich das lohnt. Eine Einschätzung zur Sinnhaftigkeit darf danebenstehen,
+  ersetzt aber nie die beauftragte Arbeit — und kürzt sie nicht.
+- **Empfehlungen als Empfehlungen kennzeichnen**, mit der Begründung daneben, damit sie
+  überprüfbar und ablehnbar sind.

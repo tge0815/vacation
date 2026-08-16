@@ -75,16 +75,26 @@ Zero-Data-Retention-Vertrag. Laut Report für eine Handvoll Kinder unverhältnis
       Überarbeitung. Inhalte gegen das prüfen, was die App heute generiert.
       *Diese Angabe vor einer Umsetzung direkt an der Primärquelle bestätigen.*
 
-## Geschäftsmodell und Kosten — entschieden
+## Geschäftsmodell und Kosten — Faktenlage, Entscheidung offen
 
-Recherche: [`docs/research/2026-08-15-geschaeftsmodell-kosten.md`](docs/research/2026-08-15-geschaeftsmodell-kosten.md)
+Recherche: [`docs/research/2026-08-15-geschaeftsmodell-kosten.md`](docs/research/2026-08-15-geschaeftsmodell-kosten.md).
+Die Entscheidung über das Geschäftsmodell ist **offen und liegt beim Auftraggeber**. Was unten
+steht, sind Rechercheergebnisse, keine getroffenen Festlegungen.
 
-- **Keine Monetarisierung.** Die KI-Kosten liegen bei etwa **0,25–0,78 € pro Kind und Monat**,
-  für alle drei Kinder zusammen unter **3 € im Monat**. Werbung scheidet rechtlich aus
-  (UWG Anh. Nr. 28, JMStV § 6, DSGVO Art. 8) und wirtschaftlich mangels Reichweite. Ein Abo
-  würde die Kosten zwar decken, aber Gewerbeanmeldung, Impressumspflicht, AGB, Widerrufsrecht
-  und Zahlungsdienstleister stehen bei drei Kindern in keinem Verhältnis zum Ertrag.
-  **Weg:** Kosten selbst tragen, allenfalls informelle Kostenbeteiligung der Nachbarfamilie.
+- **Kostenbasis:** Die KI-Kosten liegen im aktuellen Betrieb bei etwa **0,25–0,78 € pro Kind
+  und Monat** (geschätzte, nicht gemessene Token-Zahlen), für drei Kinder zusammen unter
+  **3 € im Monat**. Das ist die Ausgangsbasis für jede Kalkulation, nicht ihr Ergebnis.
+
+- **Werbung** stößt bei Kindern auf harte rechtliche Grenzen: UWG Anhang Nr. 28 (direkte
+  Kaufappelle), JMStV § 6, DSGVO Art. 8. Personalisierte Werbung gegenüber Minderjährigen
+  fällt praktisch aus. Das ist eine Rahmenbedingung für jedes Erlösmodell.
+
+- **Kommerzieller Betrieb** zieht nach sich: Gewerbeanmeldung, Impressumspflicht (§ 5 DDG),
+  AGB, Widerrufsrecht (ab 19.06.2026 mit Widerrufsbutton nach § 356a BGB),
+  Zahlungsdienstleister mit Geschäftskonto. Aufwand, der in die Planung gehört.
+
+- [ ] **Offen: Tragfähigkeit als Geschäft.** Marktgröße, Wettbewerbssituation, Eintritts-
+      barrieren, Unit Economics bei Skalierung und ein Phasenplan werden gesondert recherchiert.
 
 - [ ] **Prompt Caching bringt hier nichts — nicht einbauen.** Der größte Systemprompt
       (`exerciseBatchSystemPrompt()`, geschätzt ~1.350 Token) liegt unter der Mindestlänge von
