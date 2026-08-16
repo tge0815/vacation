@@ -660,6 +660,19 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       }
     },
   },
+  {
+    // Einmalig den vorgenerierten Aufgaben-Vorrat leeren: ältere Batches
+    // konnten grammatikalisch falsche Lückentexte enthalten (z.B. trennbare
+    // Verben mit Vorsilbe in der Lücke). Wird mit dem verbesserten Prompt neu
+    // generiert. Betrifft nur den Cache, keine Historie/Fortschritte.
+    name: "029_flush_exercise_pool",
+    run: (db) => {
+      const exists = db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'exercise_pool'")
+        .get();
+      if (exists) db.exec("DELETE FROM exercise_pool");
+    },
+  },
 ];
 
 // Admin-Konto aus den Umgebungsvariablen sicherstellen. Die .env ist die
