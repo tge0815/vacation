@@ -93,8 +93,25 @@ steht, sind Rechercheergebnisse, keine getroffenen Festlegungen.
   AGB, Widerrufsrecht (ab 19.06.2026 mit Widerrufsbutton nach § 356a BGB),
   Zahlungsdienstleister mit Geschäftskonto. Aufwand, der in die Planung gehört.
 
-- [ ] **Offen: Tragfähigkeit als Geschäft.** Marktgröße, Wettbewerbssituation, Eintritts-
-      barrieren, Unit Economics bei Skalierung und ein Phasenplan werden gesondert recherchiert.
+- **Tragfähigkeit als Geschäft — recherchiert, Entscheidung offen.** Reports:
+  [Markt & Wettbewerb](docs/research/2026-08-15-markt-wettbewerb-business.md),
+  [Businessplan & Unit Economics](docs/research/2026-08-15-businessplan-unit-economics.md).
+  Kennzahlen: TAM 700–950 Mio. €/Jahr, SAM 250–450 Mio. €, realistisch erreichbares SOM
+  150.000–2 Mio. € ARR in 3–5 Jahren. LTV:CAC im einfachen Dauerabo bei ~0,9:1
+  (gesund wären 2,5–4:1), Payback 13–16 Monate.
+
+- [ ] **Vor jeder Entscheidung zu klären — zwei Fakten fehlen.**
+      (a) Anthropics Nutzungsbedingungen zur Nutzung durch Minderjährige im kommerziellen
+      Kontext (anthropic.com war über den Proxy blockiert). Möglicher Blocker.
+      (b) Die beiden direkten Wettbewerber **Wunschlern** und **Tutel** — besetzen laut Report
+      genau unsere Nische (KI-Generierung zur Laufzeit), waren aber ebenfalls blockiert und
+      konnten nicht geprüft werden.
+
+- [ ] **Zwei Hebel, die in der eigenen Hand liegen** (aus den Reports, nicht entschieden):
+      *Positionierung* — der saisonale Churn ist durch „Ferien"-App selbst erzeugt; eine
+      ganzjährige Ausrichtung würde direkt am LTV ziehen. *Differenzierung* — der
+      **Eltern-Coach-Chat** ist die einzige belegte Lücke, die der Marktreport gefunden hat,
+      und existiert bereits im Produkt.
 
 - [ ] **Prompt Caching bringt hier nichts — nicht einbauen.** Der größte Systemprompt
       (`exerciseBatchSystemPrompt()`, geschätzt ~1.350 Token) liegt unter der Mindestlänge von
