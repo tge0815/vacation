@@ -39,6 +39,16 @@ Marktanalyse, Lehrplan-Datenquellen, Datenschutz/DSGVO.
       *Verifiziert am 2026-08-15 direkt im Code.*
       Optionen: Funktion für fremde Kinder abschaltbar machen, offenlegen, oder lokale Erkennung.
 
+- [ ] **Adaptivität greift zu spät — Totzone von 41 % bis 79 %**
+      `nextDifficulty()` in `src/lib/ai/exercises.ts:43-47` erhöht die Schwierigkeit ab 80 %
+      Trefferquote und senkt sie erst bei 40 % oder darunter. Dazwischen passiert nichts.
+      Ein Kind, das dauerhaft bei 45 % liegt — also mehr als die Hälfte falsch — bekommt
+      keine Erleichterung. *Verifiziert am 2026-08-15 direkt im Code.*
+      Die Forschung ([Wilson et al. 2019](https://www.nature.com/articles/s41467-019-12552-4))
+      nennt rund **85 % Trefferquote** als Optimum für Lernfortschritt; siehe
+      [Motivations-Report](docs/research/2026-08-15-motivation-engagement.md).
+      Das ist die wahrscheinlichste technische Ursache für „macht keinen Spaß".
+
 ## Wichtig
 
 ### Datenschutz — unverzichtbar, sobald das Nachbarskind mitnutzt
@@ -141,6 +151,16 @@ steht, sind Rechercheergebnisse, keine getroffenen Festlegungen.
   Geschwistern noch zwischen Kindern verschiedener Familien. Die Evidenz spricht klar dagegen,
   und die Kinder-UI macht es heute schon richtig — sie zeigt nie fremde Daten. Das ist ein
   **Nicht-Ziel**, das bewusst so bleiben soll, damit es nicht später versehentlich eingebaut wird.
+
+- **Belohnungen bleiben leistungskontingent und fest — nicht auf Zufall umstellen.** Coins
+  gibt es für richtige Antworten, nicht fürs bloße Mitmachen, und nie in zufälliger Höhe.
+  Das ist die praktikable Lehre aus dem Korrumpierungseffekt (Deci/Koestner/Ryan 1999,
+  d = −0,40 bei teilnahmekontingenten Belohnungen). `awardCorrectCoins()` macht das heute
+  richtig — Zufallsbelohnungen oder Anwesenheitsprämien wären eine Verschlechterung,
+  auch wenn sie kurzfristig binden.
+
+- **Echte Spaced Repetition im Tagespfad beibehalten** (`src/app/api/path/route.ts`).
+  Laut Motivations-Report einer der stärksten vorhandenen Bausteine.
 
 - **Der Eigenbau bleibt gerechtfertigt.** bettermarks ist in Niedersachsen über die
   Bildungscloud kostenlos, aber nur Mathe und nur bei Freischaltung durch die Schule. Für Deutsch
