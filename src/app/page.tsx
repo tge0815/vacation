@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Settings, Loader2, LogOut } from "lucide-react";
 import { color } from "@/components/colors";
-import { Flame, Rainbow, Star } from "@/components/doodle/Doodles";
+import { Star } from "@/components/doodle/Doodles";
 import type { PublicUser } from "@/lib/serialize";
 
 export default function Home() {
@@ -29,8 +29,6 @@ export default function Home() {
 
   return (
     <main className="relative mx-auto w-full max-w-4xl px-4 py-10 flex-1">
-      <Flame className="absolute top-6 right-3 rotate-6 hidden sm:block" size={52} />
-      <Rainbow className="absolute top-4 left-2 hidden sm:block" size={84} />
       <div className="flex justify-end mb-2">
         <button onClick={logout} className="pill py-2 text-sm">
           <LogOut size={16} /> Abmelden
