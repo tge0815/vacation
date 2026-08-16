@@ -34,6 +34,12 @@ Abschnitt 7) statt über einen Frontalangriff auf den breiten Markt, und über *
 getriebenes Wachstum statt bezahlte Akquise**, weil die CAC-Ökonomie bei einem kostenlosen
 Hauptwettbewerber strukturell gegen zahlungspflichtige Neueinsteiger arbeitet. Landeslizenzen sind ein
 verlockender, aber für einen Neuling in absehbarer Zeit kaum erreichbarer Kanal (siehe Abschnitt 4).
+**Nachtrag zur Anton-Finanzierung (Auftraggeber-Nachfrage, siehe Abschnitt 2a):** Anton ist kein
+dauerhaft staatlich subventionierter Sonderfall, sondern eine private, gewinnorientierte GmbH mit
+einmaliger öffentlicher Anschubfinanzierung (EFRE/ProFIT, Entwicklungsphase 2016–vermutlich 2018) und
+seither — soweit erkennbar — Freemium-/Schullizenz-Erlösen. Das macht die Wettbewerbslage für
+Neueinsteiger nicht einfacher, sondern nur anders begründet: Man kann eine bewusste, offenbar
+wirtschaftlich tragfähige Gratis-Positionierung genauso wenig unterbieten wie eine Subvention.
 
 ## Annahmen
 
@@ -169,6 +175,150 @@ gezielter Suche nach Bundesanzeiger-Daten **keine Umsatzzahlen** verifiziert wer
 auf Northdata, Bundesanzeiger.de und Unternehmensregister.de war über den Recherche-Proxy blockiert
 (EGRESS_BLOCKED), Sekundärquellen (Presse, Crunchbase, Tracxn) enthalten diese Zahlen nicht. **Das ist die
 größte Lücke dieser Recherche** — siehe "Offene Punkte".
+
+## 2a. Nachtrag (Nachfrage Auftraggeber): Wie finanziert sich Anton konkret?
+
+*Ergänzt am 16.08.2026 auf gezielte Nachfrage. Bundesanzeiger, Northdata und Unternehmensregister.de
+waren erneut vollständig blockiert (`EGRESS_BLOCKED`) — die folgenden Angaben stammen aus
+Wikipedia-Sekundärzitaten (Direktzugriff auf de.wikipedia.org ebenfalls blockiert, Inhalt nur über
+Suchindex-Snippets rekonstruierbar), Presseberichten, einem Gründerinterview und den offiziellen
+Preis-/Schullizenzangaben von anton.app (Fetch der Originalseiten blockiert, Inhalt über Suchindex). Wo
+das eine reale Einschränkung der Verlässlichkeit bedeutet, ist das unten explizit vermerkt.*
+
+### 1. Trägerschaft und Rechtsform — verifiziert
+
+Anton wird von der **solocode GmbH** betrieben, Sitz Berlin, Handelsregister Amtsgericht Charlottenburg
+**HRB 179956 B**, Stammkapital 25.000 €. Die Firma wurde laut übereinstimmenden Sekundärquellen im
+**September 2016** eigens zur Entwicklung von ANTON gegründet; die Beta-Version ging im **Frühjahr 2018**
+online. Genannte Gründer/Geschäftsführer: **David Hörmeyer** und **Lorenz Heine** (aktuelle
+Geschäftsführer laut Handelsregisterauszug), in älteren Quellen zusätzlich **Urs Kramer** und
+**Max Welhöner** als Mitgründer genannt (diese Namenskombination fand sich nur in einer Sekundärquelle,
+nicht gegengeprüft). Laut Registerauszug gibt es **7 Gesellschafter** — deren Identität (Gründer vs.
+externe Kapitalgeber) ließ sich mit den zugänglichen Quellen **nicht auflösen**, weil der
+Handelsregister-Gesellschafterliste-Volltext blockiert war. Es fand sich in keiner Quelle ein Hinweis auf
+einen **institutionellen VC-Investor** (kein Fonds-Name, keine Serie-A/B-Meldung, keine
+Beteiligungsgesellschaft) — das Bild ist eher **gründergeführt/bootstrapped** als klassisch
+wagniskapitalfinanziert, aber das ist ein Negativbefund (keine Funding-Meldung gefunden), kein positiver
+Beweis für 100 % Gründerbesitz.
+([Northdata-Registerauszug, nur Metadaten zugänglich](https://www.northdata.com/solocode%20GmbH,%20Berlin/Amtsgericht%20Charlottenburg%20(Berlin)%20HRB%20179956%20B), [Wikiwand-Spiegel des Wikipedia-Artikels, Fetch blockiert, nur Suchindex-Snippet](https://www.wikiwand.com/de/articles/Anton_(Lernsoftware)))
+
+### 2. Öffentliche Förderung — Kernfakt bestätigt, Details unvollständig
+
+Bestätigt aus mehreren übereinstimmenden Quellen: Die Entwicklung von ANTON wurde **kofinanziert durch
+den Europäischen Fonds für regionale Entwicklung (EFRE)** und das **ProFIT-Programm** ("Programm zur
+Förderung von Forschung, Innovationen und Technologien") der **Berliner Senatsverwaltung für Wirtschaft,
+Energie und Betriebe**, administriert über die **Investitionsbank Berlin (IBB)**.
+
+- **Programmrahmen ProFIT** (nicht Anton-spezifisch, sondern die allgemeinen Programmparameter): Zuschüsse
+  bis **400.000 €**, kombinierbar mit Darlehen bis **1 Mio. €**, Gesamtförderdeckel **500.000 € pro
+  Projekt/Projektpartner**. ([IBB ProFIT-Programmseite](https://www.ibb.de/de/foerderprogramme/pro-fit-projektfinanzierung.html), [Förderrichtlinie ProFIT (PDF)](https://www.ibb.de/media/dokumente/foerderprogramme/wirtschaftsfoerderung/profit/profit-projektfoerderung/profit_richtlinie.pdf) — Primärquelle Förderinstitution, allgemeine Konditionen, **keine Anton-spezifische Zusage einsehbar**)
+- **Konkrete Fördersumme für solocode/ANTON**: **Nicht auffindbar.** Kein Förderkennzeichen, kein
+  Euro-Betrag speziell für dieses Projekt wurde in den durchsuchbaren Quellen gefunden. Die
+  IBB/EFRE-Projektdatenbanken, in denen das ggf. einsehbar wäre, waren nicht erreichbar.
+- **Förderzeitraum/Ende der Förderung — nicht bestätigt, nur Schlussfolgerung aus dem Muster:**
+  ProFIT ist ein **Projekt-/Frühphasenfinanzierungsprogramm**, keine dauerhafte Betriebssubvention. Der
+  zeitliche Zusammenfall (Gründung Sept. 2016 "zur Entwicklung von ANTON", Beta-Start Frühjahr 2018) passt
+  zu einer für solche Programme typischen 1,5–2-jährigen Projektlaufzeit. **Das ist eine Schlussfolgerung
+  aus dem Programm-Muster, keine belegte Aussage einer Quelle, dass die Förderung konkret 2018 endete.**
+  Es fand sich **kein Hinweis auf eine zweite EFRE-Förderrunde oder eine bis heute laufende öffentliche
+  Bezuschussung des laufenden Betriebs** — alle Quellen, die die EFRE-Förderung erwähnen, sprechen im
+  Kontext der **"Entwicklung"** ("die Entwicklung der Lernsoftware ANTON wurde kofinanziert durch..."),
+  nicht im Kontext eines laufenden Zuschusses zum heutigen Geschäftsbetrieb.
+  ([mathematik.de-Interview mit David Hörmeyer, Suchindex-Zusammenfassung](https://www.mathematik.de/hochschule-beruf/mathemacher-innen/2830-david-h%C3%B6rmeyer-ist-mathemacher-der-monate-m%C3%A4rz-und-april) — Fetch blockiert)
+
+### 3. Eigene Erlöse — mit konkreten Preispunkten belegt, Gesamtanteil nicht quantifizierbar
+
+- **Anton Plus (B2C-Abo):** Einzel **9,99 €/Jahr**, Familie **19,99 €/Jahr**, Lehrkraft **39,99 €/Jahr**
+  (App-Store-Angaben). Freigeschaltet werden u. a. Offline-Nutzung, Avatar-/Kosmetik-Anpassung,
+  Eltern-Kontrollfunktionen (Fortschritt einsehen, Spiele/Belohnungen steuern). Der **Kern-Lerninhalt
+  bleibt im Gratis-Angebot vollständig enthalten** — Anton Plus verkauft Komfort/Zusatzfunktionen, nicht
+  den Zugang zum Üben selbst.
+- **Schullizenzen (B2B2C):** **250 €/Jahr** (Schulen bis 500 Schüler:innen) bzw. **400 €/Jahr** (über 500
+  Schüler:innen) pro Schulstandort für die Lehrkraft-Funktionen (Klassenverwaltung,
+  Hausaufgaben-Zuweisung); **Schullizenz Plus** (inkl. Anton-Plus-Freischaltung für alle Schüler:innen und
+  Lehrkräfte am Standort) **450 €/Jahr** bzw. **700 €/Jahr**.
+  ([anton.app/de/schullizenz](https://anton.app/de/schullizenz) — Herstellerangabe, Fetch blockiert, nur
+  über Suchindex-Snippet rekonstruiert, **vor einer Kaufentscheidung auf der Originalseite zu verifizieren**)
+- **Landeslizenzen:** Für Anton wurde — anders als für bettermarks (Niedersachsen, Rheinland-Pfalz) — in
+  dieser wie in der vorherigen Recherche **keine bestätigte zentrale Landeslizenz** gefunden. Anton scheint
+  direkt an einzelne Schulen/Lehrkräfte zu verkaufen, nicht über zentrale Länder-Rahmenverträge — mit der
+  Einschränkung, dass ein Nicht-Fund kein Beleg für Abwesenheit ist.
+- **Anteil am Gesamtbudget:** **Nicht quantifizierbar.** Ohne Jahresabschlusszahlen (Bundesanzeiger
+  blockiert) lässt sich nicht sagen, welcher Anteil der Kosten durch Plus-Abos vs. Schullizenzen vs. ggf.
+  weitere, nicht gefundene Einnahmequellen gedeckt wird.
+
+### 4. Tragfähigkeit — Interview-Aussagen vs. fehlende Zahlen
+
+Im auffindbaren Gründerinterview (David Hörmeyer, CEO, in einer Mathematik.de-Rubrik für
+Mathematik-Persönlichkeiten) wird sinngemäß berichtet: Das Unternehmen habe **kein Marketingbudget und
+keine Vertriebsabteilung**, sondern konzentriere sich ausschließlich auf Produkt-/Lerninhalt-Entwicklung
+und Support. Wichtigste **Erfolgsmetrik** sei nicht der Umsatz, sondern die Zahl **"erfolgreich
+abgeschlossener Level pro Tag"** — Umsatz wird als "natürlich auch wichtig" eingeordnet, aber nicht als
+Nordstern beschrieben. Leitmotiv: Jedes Kind solle kostenlos mit Anton lernen können; Anton Plus schaltet
+Komfortfunktionen frei, nicht den Kerninhalt.
+([mathematik.de, Suchindex-Zusammenfassung, Fetch blockiert](https://www.mathematik.de/hochschule-beruf/mathemacher-innen/2830-david-h%C3%B6rmeyer-ist-mathemacher-der-monate-m%C3%A4rz-und-april))
+
+**Einordnung:** Diese Aussagen plus der fehlende Fund jeglicher späterer VC-Finanzierungsrunde (siehe
+Abschnitt 1) ergeben in der Gesamtschau das Bild eines **schlank betriebenen, nach einer einmaligen
+öffentlichen Anschubfinanzierung überwiegend eigenfinanzierten Freemium-Unternehmens** — nicht das Bild
+eines dauerhaft subventionierten Betriebs. **Das bleibt aber eine Einschätzung aus Indizien, keine
+verifizierte Tatsache**: Ohne Bundesanzeiger-Jahresabschluss lässt sich nicht ausschließen, dass (a) die
+Gesellschafter das Unternehmen laufend quersubventionieren, (b) es weitere, unter anderem Namen laufende
+öffentliche Förderprojekte gibt (z. B. Anschlussprojekte, die nicht unter "ANTON" firmieren), oder (c) das
+Unternehmen schlicht Verluste schreibt und von Gesellschafterdarlehen lebt — alle drei Szenarien sind mit
+den öffentlich sichtbaren Informationen vereinbar und nicht widerlegt.
+
+### 5. Muster im Vergleich: Wie finanzieren sich andere Gratis-Anbieter?
+
+| Anbieter | Trägerform | Finanzierungsmuster | Einordnung |
+|---|---|---|---|
+| **Khan Academy** | US-Non-Profit (501(c)(3)) | Spenden-/Stiftungsfinanziert: **Gesamteinnahmen FY 2024/25 ~117,5 Mio. US-$**, davon **90,4 Mio. $ Zuwendungen/Spenden** und **22,2 Mio. $ "program service revenue"** (u. a. Khanmigo-Abos/Partnerschaften) — beides Rekordwerte. Größter Einzelgeber: **Gates Foundation**, allein 2024 ein Einzelzuschuss von **46 Mio. $** für "classroom products", historisch **38,1 Mio. $** kumulativ von der Gates Foundation. | Eindeutig **nicht-kommerziell**, strukturell dauerhaft auf externe Zuwendungen angewiesen — kann tatsächlich nie "pleitegehen müssen wegen Umsatzdruck" im klassischen Sinn, ist aber auch von Großspender-Launen abhängig. |
+| **Serlo** | Gemeinnütziger Verein (Serlo Education e.V.) | Spenden-/Stiftungsfinanziert, u. a. **Hans Sauer Stiftung** als "erster und mehrfacher Förderer"; folgt dem 10-Punkte-Standard "Transparente Zivilgesellschaft" von Transparency International. **Exakte Beträge nicht auffindbar** (Transparenzseite nicht direkt einsehbar, Proxy blockiert). | Strukturell wie Khan Academy: gemeinnützig, spendenabhängig, kein kommerzieller Erlösdruck — aber auch keine belastbare Skalierungslogik ohne wachsende Spendenbasis. |
+| **schlaukopf.de** | Privatprojekt (laut Eigenangabe "gemeinnützig positioniert", aber keine bestätigte Vereins-/Stiftungsform gefunden) | **Werbefinanziert** (Geschäftsmodellbeschreibung deutet auf Anzeigenerlöse hin, konkreter Vermarkter nicht verifiziert) **plus Premium-Abo** für Werbefreiheit (3,99 €/Monat bzw. 23,99 €/Jahr, aus vorheriger Marktanalyse) | Das einzige der drei Vergleichsfälle, das **rein kommerziell werbefinanziert** ist, ohne Stiftungs-/Spendenhintergrund — strukturell am ehesten mit klassischen Content-Websites vergleichbar, nicht mit Anton. |
+| **Anton (zum Vergleich)** | Private, gewinnorientierte GmbH (solocode GmbH) | **Hybrid**: einmalige öffentliche Anschubfinanzierung (EFRE/ProFIT) für die Entwicklungsphase 2016–2018, seitdem nach verfügbaren Indizien **kommerzielles Freemium-Modell** (Plus-Abos + Schullizenzen), keine gemeinnützige Trägerschaft, keine erkennbare laufende öffentliche Bezuschussung des Betriebs | **Struktureller Sonderfall** unter den vier Vergleichsfällen: weder reine Non-Profit-Spendenfinanzierung (wie Khan Academy/Serlo) noch reine Werbefinanzierung (wie schlaukopf) noch VC-Wachstumsfinanzierung (wie simpleclub/sofatutor), sondern eine **gewinnorientierte GmbH mit öffentlich finanziertem Startpunkt**, die sich strategisch für ein dauerhaft kostenloses Kernprodukt entschieden hat. |
+
+**Antwort auf die Musterfrage:** Teilweise ja, teilweise nein. Bei den **beiden reinen
+Non-Profit-Beispielen** (Khan Academy, Serlo) stimmt die Vermutung "kostenlos = nicht-kommerziell
+finanziert" uneingeschränkt. **schlaukopf.de** widerlegt sie (rein werbefinanziert, kommerziell, aber ohne
+direktes Nutzerentgelt). **Anton** ist der interessanteste Fall, weil es **weder** das eine **noch** das
+andere ist: eine private GmbH, die einmalig öffentlich beim Aufbau unterstützt wurde und seither
+freemium-kommerziell arbeitet — strukturell näher an einem Bootstrap-Startup mit staatlichem Gründerzuschuss
+(wie es in Deutschland tausendfach vorkommt, z. B. über EXIST oder eben ProFIT) als an einer dauerhaften
+öffentlichen Institution.
+
+### 6. Bewertung: Was bedeutet das für einen kommerziellen Neueinsteiger?
+
+Die in der Nachfrage formulierte Sorge — "wenn Anton öffentlich querfinanziert ist, kann man es
+preislich nie unterbieten" — trifft **so pauschal nicht zu**, weil keine Quelle eine **laufende**
+öffentliche Bezuschussung des heutigen Betriebs belegt. Die reale Lage ist aber für einen Neueinsteiger
+**kaum weniger unbequem**:
+
+- Man konkurriert nicht gegen eine dauersubventionierte Institution, sondern gegen ein **privates
+  Unternehmen, das die bewusste, seit der Gründung durchgehaltene Markenentscheidung getroffen hat, das
+  Kernprodukt dauerhaft kostenlos zu halten** und stattdessen über Komfortfunktionen (Plus-Abo) und
+  B2B-Schullizenzen zu monetarisieren. Diese Entscheidung ist wirtschaftlich offenbar tragfähig (kein
+  Hinweis auf Rückzug, Einstellung, Notverkauf oder Insolvenz; Produktumfang wuchs bis 2024 auf 100.000
+  Aufgaben und 200 Aufgabentypen) — das ist für einen Wettbewerber **strategisch fast so hart wie eine
+  Subvention**, auch wenn es rechtlich/finanziell keine ist: **Man kann nicht günstiger als kostenlos
+  anbieten.**
+- **Für die Preissetzung heißt das:** Ein neuer Anbieter kann in exakt demselben Marktsegment (Kl. 1–10,
+  DE/Mathe/Englisch, breites Übungsangebot) nicht über den Basispreis konkurrieren — der Zahlungsbereitschafts-
+  -Pool für "irgendein Übungsangebot" ist strukturell klein, weil ein qualitativ ernstzunehmendes,
+  kostenloses Angebot bereits existiert und offenbar nicht kurz vor dem Aus steht.
+- **Für die Segmentfrage heißt das konkret:** Zahlungsbereitschaft entsteht realistisch nur dort, wo (a)
+  ein **spezifischerer Bedarf** vorliegt, den das breite Gratisangebot nicht abdeckt (siehe Abschnitt 7 des
+  Hauptreports: LRS/Dyskalkulie, DaZ-Förderung, Eltern-Coach-Chat, ältere Sek.-I-Jahrgänge an
+  nicht-gymnasialen Schulformen), oder (b) ein **höherer wahrgenommener pädagogischer Mehrwert** geboten
+  wird, für den Eltern bereit sind, das kostenlose Anton-Angebot bewusst nicht ausreichen zu lassen — das
+  ist eher das Terrain, in dem sich simpleclub/sofatutor/Learnattack (16–90 €/Monat-Bereich) bereits
+  erfolgreich bewegen, nicht das direkte Anton-Wettbewerbsfeld.
+- **Konsequenz für die eigene Strategie:** Ein Angriff auf Antons Kernsegment mit einem ähnlich breiten,
+  aber kostenpflichtigen Produkt ist ökonomisch aussichtslos. Sinnvoller sind (1) eine enge, von Anton nicht
+  bediente Nische mit klar höherem wahrgenommenem Wert, oder (2) ein Kanal, in dem Anton schwächer
+  positioniert ist (Landeslizenzen, wo eher bettermarks der Platzhirsch ist — siehe Abschnitt 4 des
+  Hauptreports), statt eines direkten B2C-Preiswettbewerbs im selben breiten Marktsegment.
+
+---
 
 ---
 
@@ -464,6 +614,17 @@ einer Kapitalentscheidung eine eigene, engere Recherche verdienen würden.
 - [ResearchAndMarkets: Germany Edtech Market Summary 2017–2026](https://www.researchandmarkets.com/reports/5670473/germany-edtech-market-summary-competitive) — kommerzielle Marktforschung, Schätzung
 - [Superprof: Der Deutsche Markt für Nachhilfe im Wachstum](https://www.superprof.de/blog/private-nachhilfe-boomt/) — Marketing-Blog eines Marktteilnehmers, Datierung der zitierten Zahlen unsicher
 
+**Anton-Finanzierung (Nachtrag Abschnitt 2a):**
+- [Northdata: solocode GmbH, Berlin, Amtsgericht Charlottenburg HRB 179956 B](https://www.northdata.com/solocode%20GmbH,%20Berlin/Amtsgericht%20Charlottenburg%20(Berlin)%20HRB%20179956%20B) — Register-Metadaten, Finanzzahlen nicht zugänglich (Fetch blockiert), abgerufen 16.08.2026
+- [Wikiwand-Spiegel Anton (Lernsoftware)](https://www.wikiwand.com/de/articles/Anton_(Lernsoftware)) — Sekundärspiegel des Wikipedia-Artikels, Fetch blockiert, nur über Suchindex-Snippet rekonstruiert
+- [IBB: Pro FIT – Projektfinanzierung](https://www.ibb.de/de/foerderprogramme/pro-fit-projektfinanzierung.html) — Primärquelle Förderinstitution, allgemeine Programmkonditionen, keine Anton-spezifische Zusage einsehbar
+- [IBB: ProFIT-Förderrichtlinie (PDF)](https://www.ibb.de/media/dokumente/foerderprogramme/wirtschaftsfoerderung/profit/profit-projektfoerderung/profit_richtlinie.pdf) — Primärquelle Förderinstitution
+- [mathematik.de: David Hörmeyer ist Mathemacher der Monate März und April](https://www.mathematik.de/hochschule-beruf/mathemacher-innen/2830-david-h%C3%B6rmeyer-ist-mathemacher-der-monate-m%C3%A4rz-und-april) — Gründerinterview, Fetch blockiert, nur über Suchindex-Zusammenfassung rekonstruiert, **nicht wörtlich verifiziert**
+- [anton.app/de/schullizenz](https://anton.app/de/schullizenz) — Herstellerangabe, Fetch blockiert, nur über Suchindex-Snippet
+- [Khan Academy Finanzzahlen FY2024/25 (Jahreseinnahmen, Gates-Foundation-Zuschuss)](https://www.devex.com/news/how-the-gates-foundation-spent-5-4-billion-in-2024-110044) — unabhängiger Fachjournalismus (Devex), plus Sekundärangaben aus Tracxn/Influence Watch/Philanthropy Roundtable
+- [Serlo: Transparenz](https://de.serlo.org/transparenz) — Herstellerangabe/Selbstauskunft, Fetch blockiert, nur Existenz der Transparenzseite und Förderer-Nennung (Hans Sauer Stiftung) über Suchindex verifizierbar
+- [Hans Sauer Stiftung: Serlo](https://www.hanssauerstiftung.de/projekt/serlo/) — Förderer-Eigenangabe
+
 **Wettbewerber – Finanzzahlen:**
 - [deutsche-startups.de: sofatutor wächst auf 26 Millionen Umsatz (Zahlencheck 2021)](https://www.deutsche-startups.de/2023/07/03/sofatutor-zahlencheck-2021/) — unabhängiger Fachjournalismus
 - [simpleclub Presse: Erfolgsgeschichten](https://simpleclub.com/erfolgsgeschichten) — Herstellerangabe
@@ -521,9 +682,18 @@ einer Kapitalentscheidung eine eigene, engere Recherche verdienen würden.
 
 - **Umsatzzahlen für Anton, bettermarks, scoyo und Learnattack** konnten nicht verifiziert werden — der
   direkte Zugriff auf Bundesanzeiger.de, Unternehmensregister.de und Northdata war über den Recherche-
-  Proxy vollständig blockiert (`EGRESS_BLOCKED`). Mit normalem Browser-Zugriff wären diese Zahlen (für
-  bundesanzeigerpflichtige GmbHs Pflichtveröffentlichung) in kurzer Zeit einsehbar — höchste Priorität für
-  eine Anschlussrecherche, bevor eine Kapitalentscheidung fällt.
+  Proxy vollständig blockiert (`EGRESS_BLOCKED`), auch bei einem zweiten Versuch für die Anton-Nachfrage
+  (siehe Abschnitt 2a). Mit normalem Browser-Zugriff wären diese Zahlen (für bundesanzeigerpflichtige
+  GmbHs Pflichtveröffentlichung) in kurzer Zeit einsehbar — höchste Priorität für eine Anschlussrecherche,
+  bevor eine Kapitalentscheidung fällt.
+- **Exakte ProFIT/EFRE-Fördersumme für solocode/ANTON und deren genauer Zeitraum (Beginn/Ende)** konnten
+  trotz gezielter Nachfrage-Recherche nicht mit einem Euro-Betrag oder Förderkennzeichen belegt werden —
+  nur die allgemeinen Programmkonditionen (Zuschuss bis 400.000 €, Gesamtdeckel 500.000 €) und der
+  Kontext "kofinanzierte die Entwicklung" (nicht den laufenden Betrieb) sind gesichert. Für eine
+  abschließende Klärung: Anfrage bei der IBB Berlin oder Akteneinsicht über das Transparenzgesetz Berlin.
+- **Gesellschafterstruktur der solocode GmbH** (7 Gesellschafter laut Registerauszug) konnte nicht
+  aufgelöst werden — offen ist, ob darunter stille Investoren oder ausschließlich Gründer/Mitarbeitende
+  sind. Mit Zugriff auf die vollständige Gesellschafterliste im Handelsregister wäre das in Minuten klärbar.
 - **Tutel und Wunschlern** — beide Hauptseiten waren blockiert, damit unklar: exakte Preise,
   Nutzerzahlen, Finanzierungsstatus, echte technische Tiefe (strukturierte, automatisch bewertete
   Aufgaben vs. freier Chat). Da beide die nächstgelegenen direkten Wettbewerber zum eigenen technischen
