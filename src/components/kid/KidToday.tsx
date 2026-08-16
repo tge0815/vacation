@@ -6,7 +6,6 @@ import { ArrowLeft, Flame, Loader2, Play, Check, LogOut, Gift, History, Gamepad2
 import { ProgressRing } from "@/components/ProgressRing";
 import { color } from "@/components/colors";
 import { subjectIcon } from "@/components/subjectIcon";
-import { Rainbow } from "@/components/doodle/Doodles";
 import { KidPath, type PathData } from "@/components/kid/KidPath";
 import type { PublicUser } from "@/lib/serialize";
 
@@ -81,7 +80,6 @@ export function KidToday({ userId }: { userId: number }) {
 
   return (
     <main className="relative mx-auto w-full max-w-3xl px-4 py-8 flex-1">
-      <Rainbow className="absolute top-2 right-2 hidden sm:block" size={80} />
       <header className="flex items-center justify-between gap-1.5 mb-7">
         {role === "child" ? (
           <button onClick={logout} className="pill pill-sm">

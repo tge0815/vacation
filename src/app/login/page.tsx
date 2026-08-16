@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { BrandMascot } from "@/components/BrandMascot";
-import { Flame, Rainbow, Squiggle, Star } from "@/components/doodle/Doodles";
+import { Squiggle, Star } from "@/components/doodle/Doodles";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,9 +41,7 @@ export default function LoginPage() {
 
   return (
     <main className="relative mx-auto w-full max-w-sm px-4 py-14 flex-1">
-      <Flame className="absolute -top-1 right-2 rotate-6" size={54} />
       <Star className="absolute top-24 left-1" size={26} />
-      <Rainbow className="absolute bottom-6 -right-3" size={92} />
 
       <div className="text-center mb-7">
         <BrandMascot size={160} className="mx-auto drop-shadow-sm" />
