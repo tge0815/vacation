@@ -207,6 +207,7 @@ export function ExercisePlayer({
             color: string;
             goalType: "minutes" | "count";
             goalTarget: number;
+            dailyTarget?: number;
             secondsDone: number;
             attempts: number;
           }[];
@@ -217,7 +218,8 @@ export function ExercisePlayer({
               name: s.name,
               color: s.color,
               goalType: s.goalType,
-              goalTarget: s.goalTarget,
+              // Heutiges adaptives Pensum aus dem Lernpfad (Fallback: Tagesziel).
+              goalTarget: s.dailyTarget ?? s.goalTarget,
               secondsDoneAtStart: s.secondsDone,
               attemptsAtStart: s.attempts,
             });

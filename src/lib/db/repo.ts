@@ -1169,7 +1169,10 @@ export function lastPracticedBySubject(userId: number): Map<number, string> {
   return new Map(rows.map((r) => [r.subject_id, r.d]));
 }
 
-export type DailyPlanItem = { subjectId: number; topicId: number | null };
+// target = heutiges, adaptiv angepasstes Pensum für dieses Fach (Aufgaben oder
+// Minuten, je nach Zieltyp). Wird pro Tag einmal berechnet und festgehalten,
+// damit es sich im Tagesverlauf nicht ändert.
+export type DailyPlanItem = { subjectId: number; topicId: number | null; target: number };
 
 export function getDailyPlan(userId: number, date: string): DailyPlanItem[] | null {
   const row = getDb()
@@ -1177,7 +1180,10 @@ export function getDailyPlan(userId: number, date: string): DailyPlanItem[] | nu
     .get(userId, date) as { payload: string } | undefined;
   if (!row) return null;
   try {
-    return JSON.parse(row.payload) as DailyPlanItem[];
+    const items = JSON.parse(row.payload) as DailyPlanItem[];
+    // Alt-Pläne ohne target neu berechnen lassen (kein gültiges Pensum drin).
+    if (!Array.isArray(items) || items.some((i) => typeof i.target !== "number")) return null;
+    return items;
   } catch {
     return null;
   }
@@ -1190,4 +1196,11 @@ export function setDailyPlan(userId: number, date: string, items: DailyPlanItem[
        ON CONFLICT(user_id, date) DO UPDATE SET payload = excluded.payload`,
     )
     .run(userId, date, JSON.stringify(items), Date.now());
+}
+
+// Heutiges adaptives Pensum je Fach (aus dem persistierten Plan) – für
+// Fortschritt/Abschluss außerhalb des Lernpfads (z.B. im Übungs-Player).
+export function getDailyTargets(userId: number, date: string): Map<number, number> {
+  const items = getDailyPlan(userId, date);
+  return new Map((items ?? []).map((i) => [i.subjectId, i.target]));
 }

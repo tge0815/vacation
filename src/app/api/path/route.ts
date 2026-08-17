@@ -21,6 +21,21 @@ export const dynamic = "force-dynamic";
 const MIN_RECURRENCE = 3; // jedes aktive Fach spätestens alle 3 Tage
 const MIN_STOPS = 3;
 const MAX_STOPS = 5;
+const MIN_TASKS = 3; // kleinstes Tagespensum pro Fach
+const MAX_TASKS = 15; // größtes Tagespensum pro Fach
+
+// Adaptives Pensum: das Eltern-Tagesziel ist die Basis; schwache Gebiete
+// bekommen mehr, starke (Wiederholung) deutlich weniger Aufgaben.
+function adaptiveTarget(base: number, acc: number | null, hasWeakTopic: boolean): number {
+  let factor: number;
+  if (hasWeakTopic || (acc !== null && acc < 0.7)) factor = 1.3; // schwach → mehr
+  else if (acc === null) factor = 1; // zu wenig Daten → normal
+  else if (acc >= 0.85) factor = 0.5; // sehr sicher → halbe Wiederholung
+  else if (acc >= 0.7) factor = 0.8; // solide → etwas weniger
+  else factor = 1;
+  const scaled = Math.round(base * factor);
+  return Math.max(MIN_TASKS, Math.min(MAX_TASKS, scaled));
+}
 
 type Stage = {
   id: string;
@@ -64,11 +79,9 @@ export async function GET(req: NextRequest) {
   // Kennzahlen pro Fach (nur Eltern-aktive Fächer = Tagesziel > 0).
   type Meta = {
     subjectId: number;
-    goalTarget: number;
     goalType: "minutes" | "count";
     doneValue: number;
-    reached: boolean;
-    remaining: number;
+    target: number; // frisch berechnetes adaptives Pensum (Basis für neuen Plan)
     acc: number | null; // Trefferquote 14 Tage
     gapDays: number; // Tage seit letzter Übung (Infinity = nie)
     due: boolean;
@@ -85,7 +98,6 @@ export async function GET(req: NextRequest) {
     pool.push(s.id);
     const p = prog.get(s.id);
     const doneValue = goal.type === "count" ? p?.attempts ?? 0 : Math.floor((p?.secondsDone ?? 0) / 60);
-    const reached = doneValue >= goal.target;
     const st = stats.get(s.id);
     const acc = st && st.attempts >= 5 ? st.correct / st.attempts : null;
     const last = lastPract.get(s.id);
@@ -114,11 +126,9 @@ export async function GET(req: NextRequest) {
 
     metas.set(s.id, {
       subjectId: s.id,
-      goalTarget: goal.target,
       goalType: goal.type,
       doneValue,
-      reached,
-      remaining: Math.max(0, goal.target - doneValue),
+      target: adaptiveTarget(goal.target, acc, weakTopicId !== null),
       acc,
       gapDays,
       due,
@@ -129,32 +139,41 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Tagesplan: schon vorhanden? -> beibehalten (kein Umsortieren im Tagesverlauf).
+  // Tagesplan: schon vorhanden? -> beibehalten (kein Umsortieren, kein
+  // Umskalieren des Pensums im Tagesverlauf).
   let planItems = getDailyPlan(userId, today);
   if (!planItems) {
-    // Auswahl nur aus noch nicht heute erledigten Fächern.
+    // Auswahl nur aus noch nicht heute erledigten Fächern (Pensum noch offen).
     const candidates = pool
       .map((id) => metas.get(id)!)
-      .filter((m) => !m.reached)
+      .filter((m) => m.doneValue < m.target)
       .sort((a, b) => b.priority - a.priority || b.gapDays - a.gapDays);
     const dueCount = candidates.filter((m) => m.due).length;
     const want = Math.min(candidates.length, Math.max(MIN_STOPS, Math.min(MAX_STOPS, dueCount)));
     const chosen = candidates.slice(0, want);
-    planItems = chosen.map<DailyPlanItem>((m) => ({ subjectId: m.subjectId, topicId: m.weakTopicId }));
+    planItems = chosen.map<DailyPlanItem>((m) => ({
+      subjectId: m.subjectId,
+      topicId: m.weakTopicId,
+      target: m.target,
+    }));
     setDailyPlan(userId, today, planItems);
   }
 
-  // Etappen aus dem (persistierten) Plan bauen – Zustand/Etikett live berechnet.
+  // Etappen aus dem (persistierten) Plan bauen – Zustand/Etikett live berechnet,
+  // aber gegen das FESTGEHALTENE Pensum (item.target), damit es stabil bleibt.
   const requiredStages: Stage[] = [];
   for (const item of planItems) {
     const s = byId.get(item.subjectId);
     const m = metas.get(item.subjectId);
     if (!s || !m) continue; // Fach evtl. deaktiviert -> überspringen
-    const unit = m.goalType === "count" ? (m.remaining === 1 ? "Aufgabe" : "Aufgaben") : "Min";
-    const focusTopic = item.topicId && !m.reached;
+    const target = item.target;
+    const remaining = Math.max(0, target - m.doneValue);
+    const reached = m.doneValue >= target;
+    const unit = m.goalType === "count" ? (remaining === 1 ? "Aufgabe" : "Aufgaben") : "Min";
+    const focusTopic = item.topicId && !reached;
     const strong = m.acc !== null && m.acc >= 0.7 && !m.weakTopicId;
-    const reason: Stage["reason"] = m.reached ? "goal" : m.weakTopicId ? "weak" : strong ? "due" : "goal";
-    const chip = m.reached
+    const reason: Stage["reason"] = reached ? "goal" : m.weakTopicId ? "weak" : strong ? "due" : "goal";
+    const chip = reached
       ? "erledigt"
       : m.weakTopicName
         ? `Üben: ${m.weakTopicName}`
@@ -167,11 +186,11 @@ export async function GET(req: NextRequest) {
       subjectName: s.name,
       icon: s.icon,
       color: s.color,
-      label: m.reached ? `${s.name} – geschafft!` : `${m.remaining} ${unit} · ${s.name}`,
+      label: reached ? `${s.name} – geschafft!` : `${remaining} ${unit} · ${s.name}`,
       chip,
       reason,
       required: true,
-      done: m.reached,
+      done: reached,
       href: `/kind/${userId}/uebung?subjectId=${s.id}` + (focusTopic ? `&topicId=${item.topicId}` : ""),
     });
   }

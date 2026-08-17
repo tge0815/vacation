@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listSubjects, getGoal, progressToday, currentStreak } from "@/lib/db/repo";
+import { listSubjects, getGoal, progressToday, currentStreak, getDailyTargets } from "@/lib/db/repo";
+import { localDateStr } from "@/lib/date";
 import { authUser } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
@@ -14,6 +15,8 @@ export async function GET(req: NextRequest) {
   const subjects = listSubjects();
   const prog = progressToday(userId);
   const byId = new Map(prog.map((p) => [p.subjectId, p]));
+  // Heutiges adaptives Pensum aus dem Lernpfad (falls schon berechnet).
+  const dailyTargets = getDailyTargets(userId, localDateStr());
 
   const rows = subjects.map((s) => {
     const p = byId.get(s.id);
@@ -23,6 +26,8 @@ export async function GET(req: NextRequest) {
     // Erledigt-Wert je nach Ziel-Typ: Minuten (aufgerundet) oder Aufgaben-Anzahl.
     const doneValue = goal.type === "count" ? attempts : Math.floor(secondsDone / 60);
     const reached = goal.target > 0 && doneValue >= goal.target;
+    // Heutiges Pensum: adaptiv aus dem Lernpfad, sonst das Eltern-Tagesziel.
+    const dailyTarget = dailyTargets.get(s.id) ?? goal.target;
     return {
       subjectId: s.id,
       key: s.key,
@@ -31,6 +36,7 @@ export async function GET(req: NextRequest) {
       icon: s.icon,
       goalType: goal.type,
       goalTarget: goal.target,
+      dailyTarget,
       secondsDone,
       attempts,
       correct: p?.correct ?? 0,
