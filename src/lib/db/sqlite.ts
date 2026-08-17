@@ -673,6 +673,16 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       if (exists) db.exec("DELETE FROM exercise_pool");
     },
   },
+  {
+    // Pro Kind: adaptives Volumen im Lernpfad an/aus (Standard: an).
+    name: "030_adaptive_volume",
+    run: (db) => {
+      const cols = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+      if (!cols.some((c) => c.name === "adaptive_volume")) {
+        db.exec("ALTER TABLE users ADD COLUMN adaptive_volume INTEGER NOT NULL DEFAULT 1");
+      }
+    },
+  },
 ];
 
 // Admin-Konto aus den Umgebungsvariablen sicherstellen. Die .env ist die
@@ -920,6 +930,7 @@ export type UserRow = {
   correct_coins: number;
   created_at: number;
   last_login_at: number | null;
+  adaptive_volume: number;
 };
 
 export type FamilyRow = {

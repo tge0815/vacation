@@ -17,6 +17,7 @@ export function ParentGoals() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
   const [goals, setGoals] = useState<Record<number, GoalState>>({});
+  const [adaptive, setAdaptive] = useState(true);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -46,6 +47,24 @@ export function ParentGoals() {
         setGoals(m);
       });
   }, [userId]);
+
+  // Adaptiv-Schalter des ausgewählten Kindes spiegeln.
+  useEffect(() => {
+    const u = users.find((x) => x.id === userId);
+    if (u) setAdaptive(u.adaptiveVolume);
+  }, [userId, users]);
+
+  async function toggleAdaptive() {
+    if (!userId) return;
+    const next = !adaptive;
+    setAdaptive(next);
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, adaptiveVolume: next } : u)));
+    await fetch(`/api/users/${userId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adaptiveVolume: next }),
+    }).catch(() => {});
+  }
 
   function setGoalField(subjectId: number, patch: Partial<GoalState>) {
     setGoals((prev) => ({
@@ -111,6 +130,32 @@ export function ParentGoals() {
             <span>{u.emoji}</span> {u.name}
           </button>
         ))}
+      </div>
+
+      {/* Adaptives Volumen an/aus (pro Kind) */}
+      <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] p-4 flex items-center gap-3">
+        <div className="flex-1">
+          <h3 className="font-semibold">Adaptives Volumen</h3>
+          <p className="text-xs text-neutral-500">
+            Passt die Aufgabenzahl im Lernpfad an den Lernstand an: schwache Fächer bekommen mehr,
+            sichere weniger Aufgaben. Aus = überall genau das eingestellte Tagesziel.
+          </p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={adaptive}
+          onClick={toggleAdaptive}
+          title={adaptive ? "Adaptiv an" : "Adaptiv aus"}
+          className={`relative shrink-0 h-7 w-12 rounded-full transition-colors ${
+            adaptive ? "bg-emerald-500" : "bg-neutral-300 dark:bg-neutral-700"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-transform ${
+              adaptive ? "translate-x-[22px]" : "translate-x-0.5"
+            }`}
+          />
+        </button>
       </div>
 
       {/* Tagesziel pro Fach: Minuten ODER Anzahl Aufgaben */}

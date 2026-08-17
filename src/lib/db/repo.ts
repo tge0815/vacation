@@ -315,10 +315,15 @@ export function updateUser(
     grade?: number;
     username?: string | null;
     password?: string | null;
+    adaptiveVolume?: boolean;
   },
 ): UserRow | null {
   const sets: string[] = [];
   const vals: unknown[] = [];
+  if (fields.adaptiveVolume !== undefined) {
+    sets.push("adaptive_volume = ?");
+    vals.push(fields.adaptiveVolume ? 1 : 0);
+  }
   if (fields.name !== undefined) {
     sets.push("name = ?");
     vals.push(fields.name);
@@ -354,6 +359,14 @@ export function updateUser(
 
 export function deleteUser(id: number): boolean {
   return getDb().prepare("DELETE FROM users WHERE id = ?").run(id).changes > 0;
+}
+
+// Adaptives Volumen im Lernpfad (pro Kind, Standard an).
+export function getAdaptiveVolume(userId: number): boolean {
+  const row = getDb().prepare("SELECT adaptive_volume FROM users WHERE id = ?").get(userId) as
+    | { adaptive_volume: number }
+    | undefined;
+  return row ? row.adaptive_volume !== 0 : true;
 }
 
 // --- Subjects & Topics ---
@@ -1203,4 +1216,10 @@ export function setDailyPlan(userId: number, date: string, items: DailyPlanItem[
 export function getDailyTargets(userId: number, date: string): Map<number, number> {
   const items = getDailyPlan(userId, date);
   return new Map((items ?? []).map((i) => [i.subjectId, i.target]));
+}
+
+// Tagesplan verwerfen (z.B. nach Umschalten des adaptiven Volumens), damit er
+// beim nächsten Laden mit den neuen Regeln frisch berechnet wird.
+export function clearDailyPlan(userId: number, date: string): void {
+  getDb().prepare("DELETE FROM daily_plan WHERE user_id = ? AND date = ?").run(userId, date);
 }

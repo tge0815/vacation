@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserInFamily, updateUser, deleteUser, usernameTaken } from "@/lib/db/repo";
+import {
+  getUserInFamily,
+  updateUser,
+  deleteUser,
+  usernameTaken,
+  clearDailyPlan,
+} from "@/lib/db/repo";
 import { publicUser } from "@/lib/serialize";
+import { localDateStr } from "@/lib/date";
 import { authUser, requireParent } from "@/lib/auth/server";
 
 export const runtime = "nodejs";
@@ -31,6 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     grade?: number;
     username?: string | null;
     password?: string | null;
+    adaptiveVolume?: boolean;
   };
 
   // Login-Änderung validieren (nur wenn Felder mitgeschickt werden).
@@ -50,6 +58,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const user = updateUser(uid, body);
   if (!user) return NextResponse.json({ error: "Nicht gefunden" }, { status: 404 });
+  // Adaptiv-Umschaltung wirkt sofort: heutigen Plan verwerfen → wird neu berechnet.
+  if (body.adaptiveVolume !== undefined) clearDailyPlan(uid, localDateStr());
   return NextResponse.json({ user: publicUser(user) });
 }
 

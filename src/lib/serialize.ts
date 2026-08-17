@@ -11,6 +11,7 @@ export type PublicUser = {
   hasLogin: boolean;
   coins: number;
   lastLoginAt: number | null;
+  adaptiveVolume: boolean;
 };
 
 export function publicUser(u: UserRow): PublicUser {
@@ -24,6 +25,7 @@ export function publicUser(u: UserRow): PublicUser {
     hasLogin: Boolean(u.username && u.password_hash),
     coins: u.coins ?? 0,
     lastLoginAt: u.last_login_at ?? null,
+    adaptiveVolume: (u.adaptive_volume ?? 1) !== 0,
   };
 }
 

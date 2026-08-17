@@ -10,6 +10,7 @@ import {
   lastPracticedBySubject,
   getDailyPlan,
   setDailyPlan,
+  getAdaptiveVolume,
   type DailyPlanItem,
 } from "@/lib/db/repo";
 import { localDateStr } from "@/lib/date";
@@ -75,6 +76,7 @@ export async function GET(req: NextRequest) {
   const prog = new Map(progressToday(userId).map((p) => [p.subjectId, p]));
   const stats = new Map(statsSince(userId, since).map((s) => [s.subjectId, s]));
   const lastPract = lastPracticedBySubject(userId);
+  const adaptiveOn = getAdaptiveVolume(userId);
 
   // Kennzahlen pro Fach (nur Eltern-aktive Fächer = Tagesziel > 0).
   type Meta = {
@@ -128,7 +130,8 @@ export async function GET(req: NextRequest) {
       subjectId: s.id,
       goalType: goal.type,
       doneValue,
-      target: adaptiveTarget(goal.target, acc, weakTopicId !== null),
+      // Adaptiv aus → schlicht das Eltern-Tagesziel, kein Skalieren.
+      target: adaptiveOn ? adaptiveTarget(goal.target, acc, weakTopicId !== null) : goal.target,
       acc,
       gapDays,
       due,
