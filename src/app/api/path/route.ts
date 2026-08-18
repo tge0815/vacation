@@ -22,20 +22,18 @@ export const dynamic = "force-dynamic";
 const MIN_RECURRENCE = 3; // jedes aktive Fach spätestens alle 3 Tage
 const MIN_STOPS = 3;
 const MAX_STOPS = 5;
-const MIN_TASKS = 3; // kleinstes Tagespensum pro Fach
-const MAX_TASKS = 15; // größtes Tagespensum pro Fach
 
-// Adaptives Pensum: das Eltern-Tagesziel ist die Basis; schwache Gebiete
-// bekommen mehr, starke (Wiederholung) deutlich weniger Aufgaben.
+// Adaptives Pensum: das Eltern-Tagesziel ist die OBERGRENZE (der normale Tag).
+// Adaptiv wird NUR nach unten skaliert – sichere Gebiete brauchen weniger,
+// schwache bleiben beim vollen Pensum. So wird der Tag nie größer als eingestellt.
 function adaptiveTarget(base: number, acc: number | null, hasWeakTopic: boolean): number {
   let factor: number;
-  if (hasWeakTopic || (acc !== null && acc < 0.7)) factor = 1.3; // schwach → mehr
+  if (hasWeakTopic || (acc !== null && acc < 0.7)) factor = 1; // schwach → volles Pensum
   else if (acc === null) factor = 1; // zu wenig Daten → normal
   else if (acc >= 0.85) factor = 0.5; // sehr sicher → halbe Wiederholung
-  else if (acc >= 0.7) factor = 0.8; // solide → etwas weniger
-  else factor = 1;
-  const scaled = Math.round(base * factor);
-  return Math.max(MIN_TASKS, Math.min(MAX_TASKS, scaled));
+  else factor = 0.7; // solide (0,7–0,85) → etwas weniger
+  const floor = Math.min(3, base); // nie unter 3 (bzw. das Ziel, falls kleiner)
+  return Math.max(floor, Math.min(base, Math.round(base * factor)));
 }
 
 type Stage = {

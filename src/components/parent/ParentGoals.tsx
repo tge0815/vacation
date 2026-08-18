@@ -137,8 +137,8 @@ export function ParentGoals() {
         <div className="flex-1">
           <h3 className="font-semibold">Adaptives Volumen</h3>
           <p className="text-xs text-neutral-500">
-            Passt die Aufgabenzahl im Lernpfad an den Lernstand an: schwache Fächer bekommen mehr,
-            sichere weniger Aufgaben. Aus = überall genau das eingestellte Tagesziel.
+            Das Tagesziel ist die Obergrenze. Sichere Fächer bekommen weniger Aufgaben, schwache das
+            volle Pensum – nie mehr als eingestellt. Aus = überall genau das Tagesziel.
           </p>
         </div>
         <button

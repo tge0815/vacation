@@ -683,6 +683,18 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       }
     },
   },
+  {
+    // Tagespläne einmalig verwerfen: das Pensum-Modell wurde geändert (Ziel ist
+    // jetzt die Obergrenze, es wird nur noch nach unten skaliert). Alte Pläne
+    // hielten teils höhere Werte fest. Wird neu berechnet; Fortschritt bleibt.
+    name: "031_flush_daily_plan",
+    run: (db) => {
+      const exists = db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'daily_plan'")
+        .get();
+      if (exists) db.exec("DELETE FROM daily_plan");
+    },
+  },
 ];
 
 // Admin-Konto aus den Umgebungsvariablen sicherstellen. Die .env ist die
