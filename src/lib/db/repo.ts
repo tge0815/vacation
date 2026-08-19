@@ -1009,6 +1009,35 @@ export function completeCodeLesson(
   return { awarded: false, coins: user.coins };
 }
 
+// --- Zeichen-Werkstatt (Manga-Modul) ---
+
+export function listDrawProgress(userId: number): string[] {
+  return (
+    getDb()
+      .prepare("SELECT lesson_key FROM draw_progress WHERE user_id = ? ORDER BY created_at")
+      .all(userId) as Array<{ lesson_key: string }>
+  ).map((r) => r.lesson_key);
+}
+
+// Schließt eine Zeichen-Lektion ab. Münzen gibt es nur beim ERSTEN Abschluss.
+export function completeDrawLesson(
+  userId: number,
+  lessonKey: string,
+  coinReward: number,
+): { awarded: boolean; coins: number } {
+  const db = getDb();
+  const user = getUser(userId);
+  if (!user) return { awarded: false, coins: 0 };
+  const info = db
+    .prepare("INSERT OR IGNORE INTO draw_progress (user_id, lesson_key, created_at) VALUES (?, ?, ?)")
+    .run(userId, lessonKey, Date.now());
+  if (info.changes > 0 && coinReward > 0) {
+    db.prepare("UPDATE users SET coins = coins + ? WHERE id = ?").run(coinReward, userId);
+    return { awarded: true, coins: user.coins + coinReward };
+  }
+  return { awarded: false, coins: user.coins };
+}
+
 // --- Vokabelheft ---
 
 function vocabKey(s: string): string {

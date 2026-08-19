@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Flame, Loader2, Play, Check, LogOut, Gift, History, Gamepad2, Lock } from "lucide-react";
+import { ArrowLeft, Flame, Loader2, Play, Check, LogOut, Gift, History, Gamepad2, Lock, Palette } from "lucide-react";
 import { ProgressRing } from "@/components/ProgressRing";
 import { color } from "@/components/colors";
 import { subjectIcon } from "@/components/subjectIcon";
@@ -190,6 +190,43 @@ export function KidToday({ userId }: { userId: number }) {
             </span>
           </span>
           <span className="text-2xl grayscale opacity-60">🦊</span>
+        </div>
+      )}
+
+      {/* Zeichen-Werkstatt (Manga): ebenfalls die Kür nach dem Lernweg */}
+      {werkstattUnlocked ? (
+        <button
+          onClick={() => router.push(`/kind/${userId}/zeichnen`)}
+          className="sticker w-full mb-6 flex items-center gap-4 p-4 text-left hover:-translate-y-0.5 transition"
+          style={{ background: "var(--dl-pink)", color: "#26242b" }}
+        >
+          <span
+            className="shrink-0 size-12 rounded-2xl flex items-center justify-center border-[2.5px] bg-white"
+            style={{ borderColor: "#26242b" }}
+          >
+            <Palette size={26} style={{ color: "#26242b" }} />
+          </span>
+          <span className="flex-1">
+            <span className="block font-extrabold">Zeichen-Werkstatt</span>
+            <span className="block text-sm font-semibold opacity-80">Manga zeichnen lernen – Schritt für Schritt</span>
+          </span>
+          <span className="text-2xl">🎨</span>
+        </button>
+      ) : (
+        <div className="sticker w-full mb-6 flex items-center gap-4 p-4 opacity-90" title="Erst den heutigen Weg schaffen">
+          <span
+            className="shrink-0 size-12 rounded-2xl flex items-center justify-center border-[2.5px] dl-muted"
+            style={{ borderColor: "var(--dl-outline)" }}
+          >
+            <Lock size={22} />
+          </span>
+          <span className="flex-1">
+            <span className="block font-extrabold">Zeichen-Werkstatt</span>
+            <span className="block text-sm dl-muted font-semibold">
+              Erst deinen Weg heute schaffen ({stepsDone}/{stepsTotal} Etappen) – dann freigeschaltet 🔓
+            </span>
+          </span>
+          <span className="text-2xl grayscale opacity-60">🎨</span>
         </div>
       )}
 

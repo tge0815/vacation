@@ -695,6 +695,20 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       if (exists) db.exec("DELETE FROM daily_plan");
     },
   },
+  {
+    // Zeichen-Werkstatt (Manga): abgeschlossene Zeichen-Lektionen pro Kind.
+    name: "032_draw_progress",
+    run: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS draw_progress (
+          user_id INTEGER NOT NULL,
+          lesson_key TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          PRIMARY KEY (user_id, lesson_key)
+        );
+      `);
+    },
+  },
 ];
 
 // Admin-Konto aus den Umgebungsvariablen sicherstellen. Die .env ist die
