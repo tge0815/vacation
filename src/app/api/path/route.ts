@@ -152,7 +152,13 @@ export async function GET(req: NextRequest) {
     const dueCount = candidates.filter((m) => m.due).length;
     const want = Math.min(candidates.length, Math.max(MIN_STOPS, Math.min(MAX_STOPS, dueCount)));
     const chosen = candidates.slice(0, want);
-    planItems = chosen.map<DailyPlanItem>((m) => ({
+    // Heute bereits erledigte Fächer NICHT verschwinden lassen: Wird der Plan
+    // unterwegs neu gebaut (z.B. nach einem Update oder Umschalten), bleiben sie
+    // als "erledigt"-Etappen sichtbar – die Arbeit des Tages geht nie verloren.
+    const doneToday = pool
+      .map((id) => metas.get(id)!)
+      .filter((m) => m.doneValue >= m.target && !chosen.some((c) => c.subjectId === m.subjectId));
+    planItems = [...doneToday, ...chosen].map<DailyPlanItem>((m) => ({
       subjectId: m.subjectId,
       topicId: m.weakTopicId,
       target: m.target,
