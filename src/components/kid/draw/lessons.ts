@@ -176,6 +176,45 @@ export const DRAW_LESSONS: DrawLesson[] = [
     },
   },
   {
+    key: "d_eye_styles",
+    title: "Augen mit Gefühl",
+    goal: "Offen, müde, glücklich",
+    explain:
+      "Die Form des Auges zeigt die Stimmung! Ein weit offenes Auge wirkt wach, ein flaches müde, und ein Auge als Bogen nach oben (∩) bedeutet: richtig glücklich. Zeichne alle drei nach.",
+    steps: [
+      "Offen: rundes Auge wie gelernt, große Iris.",
+      "Müde/cool: die obere Lidlinie flacher, halb geschlossen.",
+      "Glücklich: nur ein Bogen nach oben, keine Iris (zugekniffenes Lachen).",
+    ],
+    tips: ["Kleine Änderungen an der Lidform ändern die ganze Stimmung."],
+    coins: 3,
+    guide: (c, W, H) => {
+      // offen
+      mangaEye(c, W * 0.2, H * 0.4, W * 0.24);
+      // müde/halb: flache obere Lidlinie + kleine Iris
+      c.save();
+      c.strokeStyle = INK;
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(W * 0.4, H * 0.4);
+      c.quadraticCurveTo(W * 0.5, H * 0.36, W * 0.6, H * 0.4);
+      c.stroke();
+      c.restore();
+      ellipse(c, W * 0.5, H * 0.44, W * 0.05, W * 0.03, INK, 2);
+      // glücklich: Bogen nach oben
+      c.save();
+      c.strokeStyle = INK;
+      c.lineWidth = 3;
+      c.beginPath();
+      c.arc(W * 0.8, H * 0.46, W * 0.09, Math.PI * 1.15, Math.PI * 1.85);
+      c.stroke();
+      c.restore();
+      label(c, "offen", W * 0.2, H * 0.62);
+      label(c, "müde", W * 0.5, H * 0.62);
+      label(c, "glücklich", W * 0.8, H * 0.62);
+    },
+  },
+  {
     key: "d_eyes",
     title: "Ein Augenpaar",
     goal: "Der richtige Abstand",
@@ -293,6 +332,45 @@ export const DRAW_LESSONS: DrawLesson[] = [
       label(c, "Haaransatz über dem Kopf", cx, cy - r * 1.35);
     },
   },
+  {
+    key: "d_profile",
+    title: "Kopf von der Seite",
+    goal: "Das Profil",
+    explain:
+      "Von der Seite (im Profil) sieht der Kopf ganz anders aus. Trick: wieder ein Kreis für den Schädel, aber Nase, Mund und Kinn ragen vorne heraus. Das Ohr sitzt ungefähr in der Mitte. Fahre die Vorlage nach.",
+    steps: [
+      "Zeichne den Kreis für den Hinterkopf.",
+      "Setze vorne die Linie für Stirn → Nase → Mund → Kinn an.",
+      "Ein Auge kommt hinter die Nase (nicht ganz vorne!).",
+      "Das Ohr sitzt hinter der Mitte, auf Augenhöhe.",
+    ],
+    tips: ["Die Nase ist der am weitesten vorne stehende Punkt."],
+    coins: 3,
+    guide: (c, W, H) => {
+      const cx = W * 0.45,
+        cy = H * 0.38,
+        r = W * 0.22;
+      circle(c, cx, cy, r, INK, 2);
+      // Gesichtsprofil vorne (Stirn-Nase-Mund-Kinn)
+      c.save();
+      c.strokeStyle = INK;
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(cx, cy - r); // Stirn oben
+      c.quadraticCurveTo(cx + r * 1.1, cy - r * 0.3, cx + r * 1.15, cy + r * 0.15); // Nase raus
+      c.quadraticCurveTo(cx + r * 0.85, cy + r * 0.4, cx + r * 0.95, cy + r * 0.7); // Mund/Lippe
+      c.quadraticCurveTo(cx + r * 0.7, cy + r * 1.4, cx - r * 0.1, cy + r * 1.5); // Kinn
+      c.stroke();
+      c.restore();
+      // Augenlinie + Auge
+      line(c, cx - r, cy + r * 0.2, cx + r * 1.15, cy + r * 0.2, FAINT, 1.5, true);
+      mangaEye(c, cx + r * 0.55, cy + r * 0.22, W * 0.14, true);
+      // Ohr
+      ellipse(c, cx - r * 0.15, cy + r * 0.25, W * 0.035, W * 0.055, INK, 2);
+      label(c, "Nase vorn", cx + r * 1.15 + 30, cy);
+      label(c, "Ohr", cx - r * 0.15, cy + r * 0.25 + 34);
+    },
+  },
   // ---------- Welt 4: Figuren & Ausdruck ----------
   {
     key: "d_chibi",
@@ -323,6 +401,76 @@ export const DRAW_LESSONS: DrawLesson[] = [
     },
   },
   {
+    key: "d_body",
+    title: "Körper-Proportionen",
+    goal: "Wie groß ist die Figur?",
+    explain:
+      "Wie hoch ist ein Körper? Man misst in KÖPFEN! Eine junge Manga-Figur ist etwa 5 Köpfe hoch, ein Erwachsener 7–8. Die grauen Linien teilen die Höhe in Köpfe – setze Schultern, Hüfte und Beine an die richtigen Marken.",
+    steps: [
+      "Kopf oben in das erste Feld zeichnen.",
+      "Schultern knapp unter Kopf 1, Hüfte etwa bei Kopf 3.",
+      "Beine füllen die unteren Felder (Kopf 3 bis 5).",
+      "Als Strichmännchen anfangen, dann die Formen andicken.",
+    ],
+    tips: ["Erst grob als Strichmännchen, dann Muskeln/Kleidung drüber."],
+    coins: 3,
+    guide: (c, W, H) => {
+      const cx = W * 0.5;
+      const top = H * 0.08;
+      const unit = (H * 0.84) / 5; // 5 Köpfe
+      for (let i = 0; i <= 5; i++) {
+        const y = top + i * unit;
+        line(c, W * 0.2, y, W * 0.8, y, FAINT, 1.5, true);
+        label(c, i === 0 ? "Kopf 1" : `${i + 1}`, W * 0.14, y + unit * 0.5);
+      }
+      // Kopf
+      circle(c, cx, top + unit * 0.5, unit * 0.42, INK, 2);
+      // Strichmännchen
+      c.save();
+      c.strokeStyle = INK;
+      c.lineWidth = 2.5;
+      c.beginPath();
+      c.moveTo(cx, top + unit); // Hals
+      c.lineTo(cx, top + unit * 3); // Rumpf bis Hüfte
+      c.moveTo(cx - unit * 0.7, top + unit * 1.3); // Arme
+      c.lineTo(cx + unit * 0.7, top + unit * 1.3);
+      c.moveTo(cx, top + unit * 3); // Beine
+      c.lineTo(cx - unit * 0.5, top + unit * 5);
+      c.moveTo(cx, top + unit * 3);
+      c.lineTo(cx + unit * 0.5, top + unit * 5);
+      c.stroke();
+      c.restore();
+    },
+  },
+  {
+    key: "d_pose",
+    title: "Bewegung & Aktionslinie",
+    goal: "Figuren lebendig machen",
+    explain:
+      "Damit eine Figur nicht steif dasteht, zeichnet man zuerst EINE geschwungene Linie – die Aktionslinie. Sie zeigt den Schwung der ganzen Pose (oft ein C oder S). Erst die Linie, dann die Figur darauf aufbauen.",
+    steps: [
+      "Zieh die geschwungene Aktionslinie mit einem Schwung nach.",
+      "Setze den Kopf ans obere Ende.",
+      "Baue Rumpf und Beine entlang der Linie auf – mitschwingen lassen.",
+      "Arme dazu, die die Bewegung unterstützen.",
+    ],
+    tips: ["Eine gebogene Linie wirkt lebendig, eine gerade wirkt steif."],
+    coins: 3,
+    guide: (c, W, H) => {
+      // große S-/C-Aktionslinie
+      c.save();
+      c.strokeStyle = INK;
+      c.lineWidth = 3;
+      c.beginPath();
+      c.moveTo(W * 0.4, H * 0.1);
+      c.bezierCurveTo(W * 0.75, H * 0.35, W * 0.25, H * 0.6, W * 0.6, H * 0.9);
+      c.stroke();
+      c.restore();
+      circle(c, W * 0.4, H * 0.13, W * 0.06, FAINT, 2, true); // Kopf-Andeutung
+      label(c, "Aktionslinie", W * 0.22, H * 0.5);
+    },
+  },
+  {
     key: "d_expressions",
     title: "Gefühle zeigen",
     goal: "Freude, Wut, Staunen",
@@ -337,10 +485,47 @@ export const DRAW_LESSONS: DrawLesson[] = [
     coins: 3,
     guide: (c, W, H) => {
       const ys = H * 0.4;
-      [0.2, 0.5, 0.8].forEach((fx) => circle(c, W * fx, ys, W * 0.12, FAINT, 2, true));
-      label(c, "froh", W * 0.2, ys + W * 0.2);
-      label(c, "wütend", W * 0.5, ys + W * 0.2);
-      label(c, "staunend", W * 0.8, ys + W * 0.2);
+      const r = W * 0.12;
+      const faces: Array<[number, string]> = [
+        [0.2, "froh"],
+        [0.5, "wütend"],
+        [0.8, "staunend"],
+      ];
+      faces.forEach(([fx, name]) => {
+        const x = W * fx;
+        circle(c, x, ys, r, FAINT, 2, true);
+        c.save();
+        c.strokeStyle = INK;
+        c.lineWidth = 2.5;
+        if (name === "froh") {
+          // Augen = Bögen nach oben, breites Lächeln
+          c.beginPath();
+          c.arc(x - r * 0.4, ys - r * 0.1, r * 0.22, Math.PI * 1.1, Math.PI * 1.9);
+          c.arc(x + r * 0.4, ys - r * 0.1, r * 0.22, Math.PI * 1.1, Math.PI * 1.9);
+          c.stroke();
+          c.beginPath();
+          c.arc(x, ys + r * 0.25, r * 0.5, Math.PI * 0.15, Math.PI * 0.85);
+          c.stroke();
+        } else if (name === "wütend") {
+          // Brauen schräg nach innen, kleiner Mund
+          c.beginPath();
+          c.moveTo(x - r * 0.6, ys - r * 0.5);
+          c.lineTo(x - r * 0.15, ys - r * 0.25);
+          c.moveTo(x + r * 0.6, ys - r * 0.5);
+          c.lineTo(x + r * 0.15, ys - r * 0.25);
+          c.stroke();
+          circle(c, x - r * 0.35, ys, r * 0.1, INK, 2);
+          circle(c, x + r * 0.35, ys, r * 0.1, INK, 2);
+          line(c, x - r * 0.25, ys + r * 0.5, x + r * 0.25, ys + r * 0.5, INK, 2.5);
+        } else {
+          // staunend: große runde Augen, kleiner O-Mund
+          circle(c, x - r * 0.35, ys - r * 0.05, r * 0.2, INK, 2);
+          circle(c, x + r * 0.35, ys - r * 0.05, r * 0.2, INK, 2);
+          circle(c, x, ys + r * 0.5, r * 0.15, INK, 2);
+        }
+        c.restore();
+        label(c, name, x, ys + r + 22);
+      });
     },
   },
   {
@@ -368,9 +553,13 @@ export const DRAW_LESSONS: DrawLesson[] = [
 
 export const DRAW_WORLDS: DrawWorld[] = [
   { n: 1, title: "Welt 1 · Aufwärmen", keys: ["d_lines", "d_shapes"] },
-  { n: 2, title: "Welt 2 · Manga-Augen", keys: ["d_eye", "d_eyes"] },
-  { n: 3, title: "Welt 3 · Kopf & Gesicht", keys: ["d_head", "d_face", "d_hair"] },
-  { n: 4, title: "Welt 4 · Figuren & Ausdruck", keys: ["d_chibi", "d_expressions", "d_project"] },
+  { n: 2, title: "Welt 2 · Manga-Augen", keys: ["d_eye", "d_eyes", "d_eye_styles"] },
+  { n: 3, title: "Welt 3 · Kopf & Gesicht", keys: ["d_head", "d_face", "d_hair", "d_profile"] },
+  {
+    n: 4,
+    title: "Welt 4 · Figuren & Ausdruck",
+    keys: ["d_chibi", "d_body", "d_pose", "d_expressions", "d_project"],
+  },
 ];
 
 export function findDraw(key: string): DrawLesson | undefined {
