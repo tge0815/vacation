@@ -709,6 +709,70 @@ const MIGRATIONS: Array<{ name: string; sql?: string; run?: (db: Database.Databa
       `);
     },
   },
+  {
+    // Das Vokabelheft wird pro Fach eindeutig statt global: Englisch und
+    // Französisch dürfen dieselbe Vokabel enthalten (z. B. "super" oder
+    // "die Natur"/nature/la nature würden sich sonst gegenseitig als Dublette
+    // blockieren). SQLite kann eine UNIQUE-Tabellenbedingung nicht ändern,
+    // darum wird die Tabelle neu aufgebaut und der Inhalt übernommen.
+    name: "033_vocab_unique_per_subject",
+    run: (db) => {
+      db.exec(`
+        CREATE TABLE vocab_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          subject_id INTEGER NOT NULL,
+          prompt TEXT NOT NULL,
+          answer TEXT NOT NULL,
+          norm TEXT NOT NULL,
+          seen INTEGER NOT NULL DEFAULT 0,
+          correct INTEGER NOT NULL DEFAULT 0,
+          wrong INTEGER NOT NULL DEFAULT 0,
+          box INTEGER NOT NULL DEFAULT 1,
+          last_seen INTEGER,
+          created_at INTEGER NOT NULL,
+          UNIQUE(user_id, subject_id, norm)
+        );
+        INSERT INTO vocab_new
+          (id, user_id, subject_id, prompt, answer, norm, seen, correct, wrong, box, last_seen, created_at)
+          SELECT id, user_id, subject_id, prompt, answer, norm, seen, correct, wrong, box, last_seen, created_at
+          FROM vocab;
+        DROP TABLE vocab;
+        ALTER TABLE vocab_new RENAME TO vocab;
+        CREATE INDEX IF NOT EXISTS idx_vocab_user ON vocab(user_id);
+        CREATE INDEX IF NOT EXISTS idx_vocab_user_subject ON vocab(user_id, subject_id);
+      `);
+    },
+  },
+  {
+    // Fach Französisch — wie Englisch, aber mit eigenem Vokabelheft.
+    // BEWUSST ohne Standard-Tagesziel: nicht jedes Kind lernt Französisch.
+    // Die Eltern setzen das Ziel im Eltern-Bereich, erst dann zählt das Fach
+    // zu den Tageszielen.
+    // Idempotent: Frisch-Installationen haben das Fach schon aus dem Seed (002).
+    name: "034_franzoesisch_subject",
+    run: (db) => {
+      const existing = db.prepare("SELECT id FROM subjects WHERE key = 'franzoesisch'").get() as
+        | { id: number }
+        | undefined;
+      if (existing) return;
+
+      const maxSort =
+        (db.prepare("SELECT MAX(sort) AS m FROM subjects").get() as { m: number | null }).m ?? 0;
+      const info = db
+        .prepare(
+          "INSERT INTO subjects (key, name, color, icon, sort, active) VALUES ('franzoesisch','Französisch','amber','Languages',?,1)",
+        )
+        .run(maxSort + 1);
+      const subjectId = Number(info.lastInsertRowid);
+
+      const insTopic = db.prepare(
+        "INSERT OR IGNORE INTO topics (subject_id, key, name, description, input_hint, sort, active) VALUES (?, ?, ?, ?, NULL, ?, 1)",
+      );
+      insTopic.run(subjectId, "vokabeln", "Vokabeln", FR_VOCAB_TOPIC_DESC, 0);
+      insTopic.run(subjectId, "grammatik", "Grammatik", FR_GRAMMAR_TOPIC_DESC, 1);
+    },
+  },
 ];
 
 // Admin-Konto aus den Umgebungsvariablen sicherstellen. Die .env ist die
@@ -735,6 +799,12 @@ function seedAdminFromEnv(database: Database.Database) {
 // Wort/eine kurze Wendung ab, Richtung wechselt (Deutsch↔Englisch).
 const VOCAB_TOPIC_DESC =
   "Wörter zwischen Deutsch und Englisch übersetzen. Frage GENAU EIN einzelnes Wort oder eine kurze Wendung ab (kein ganzer Satz), mal Deutsch→Englisch, mal Englisch→Deutsch. inputMode 'text', die Lösung ist kurz und eindeutig. Alltagsnaher Grundwortschatz der 5. Klasse.";
+
+const FR_VOCAB_TOPIC_DESC =
+  "Wörter zwischen Deutsch und Französisch übersetzen. Frage GENAU EIN einzelnes Wort oder eine kurze Wendung ab (kein ganzer Satz), mal Deutsch→Französisch, mal Französisch→Deutsch. inputMode 'text', die Lösung ist kurz und eindeutig. Grundwortschatz des ersten Lernjahres: begrüßen und verabschieden, sich vorstellen, Alter, Wohnort, Zahlen 0-20, Hobbys, Essen, Farben, Tiere, Orte in der Stadt. Nomen IMMER mit bestimmtem Artikel abfragen (le/la/l'/les). Akzente korrekt schreiben (é è ê à ç ù î ô û).";
+
+const FR_GRAMMAR_TOPIC_DESC =
+  "Bestimmte Artikel le/la/l'/les, Singular und Plural der Nomen, die Verben être und avoir, regelmäßige Verben auf -er (j'aime, j'habite, tu t'appelles), Fragen mit comment, où und qui, Verneinung mit ne ... pas, en/à vor Länder- und Städtenamen, Zahlen 0-20. Erstes Französisch-Lernjahr, altersgerecht für die 5. Klasse.";
 
 const GEOGRAFIE_TOPICS: Array<{
   key: string;
@@ -853,6 +923,28 @@ const SUBJECT_SEEDS: SubjectSeed[] = [
         key: "grammatik",
         name: "Grammatik",
         description: "Simple Present, Simple Past, Artikel, Plural, Fragen.",
+      },
+    ],
+  },
+  {
+    // Französisch als eigenes Fach — wie Englisch, aber mit eigenem
+    // Vokabelheft. Die Trennung läuft über subject_id: dueVocab() und
+    // recordVocab() holen/schreiben nur Vokabeln dieses Fachs, deshalb
+    // vermischen sich Englisch- und Französisch-Vokabeln nie.
+    key: "franzoesisch",
+    name: "Französisch",
+    color: "amber",
+    icon: "Languages",
+    topics: [
+      {
+        key: "vokabeln",
+        name: "Vokabeln",
+        description: FR_VOCAB_TOPIC_DESC,
+      },
+      {
+        key: "grammatik",
+        name: "Grammatik",
+        description: FR_GRAMMAR_TOPIC_DESC,
       },
     ],
   },

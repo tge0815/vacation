@@ -51,6 +51,28 @@ type SubjectMeta = {
 
 type Phase = "loading" | "answer" | "graded" | "error";
 
+// Sonderzeichen für Französisch: auf deutscher Tastatur und auf dem Tablet
+// sind Akzente mühsam. Ein Tipp fügt das Zeichen an der Cursor-Position ein.
+const FR_CHARS = ["é", "è", "ê", "à", "â", "ç", "ù", "û", "î", "ï", "ô", "œ", "'"];
+
+function AccentBar({ onPick }: { onPick: (ch: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Französische Sonderzeichen">
+      {FR_CHARS.map((c) => (
+        <button
+          key={c}
+          type="button"
+          onClick={() => onPick(c)}
+          aria-label={`${c} einfügen`}
+          className="pill pill-sm min-w-9 justify-center text-base"
+        >
+          {c}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function ExercisePlayer({
   userId,
   subjectId,
@@ -78,6 +100,25 @@ export function ExercisePlayer({
   const [showCelebrate, setShowCelebrate] = useState(false);
   const [pendingCelebrate, setPendingCelebrate] = useState(false);
   const [coinAwarded, setCoinAwarded] = useState(false);
+  const answerRef = useRef<HTMLInputElement | null>(null);
+
+  // Zeichen an der Cursor-Position einsetzen und den Fokus im Feld lassen,
+  // damit das Kind direkt weitertippen kann.
+  function insertChar(ch: string) {
+    const el = answerRef.current;
+    if (!el) {
+      setAnswer((a) => a + ch);
+      return;
+    }
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    setAnswer(el.value.slice(0, start) + ch + el.value.slice(end));
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + ch.length, start + ch.length);
+    });
+  }
+
   const exerciseStart = useRef<number>(0);
   // Warteschlange vorab generierter Aufgaben. Ein KI-Aufruf liefert mehrere
   // Aufgaben; die App zieht daraus sofort und füllt im Hintergrund nach.
@@ -603,9 +644,13 @@ export function ExercisePlayer({
                 >
                   <input
                     autoFocus
+                    ref={answerRef}
                     value={answer}
                     onChange={(e) => setAnswer(e.target.value)}
                     inputMode={ex.inputMode === "number" ? "decimal" : "text"}
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
                     placeholder={
                       ex.inputMode === "fraction"
                         ? "z.B. 3/4"
@@ -616,6 +661,9 @@ export function ExercisePlayer({
                     className="w-full rounded-2xl border-[2.5px] px-4 py-3 text-lg font-semibold focus:outline-none"
                     style={{ borderColor: "var(--dl-outline)", background: "var(--dl-paper)", boxShadow: "3px 3px 0 var(--dl-shadow)" }}
                   />
+                  {gen?.subjectKey === "franzoesisch" && ex.inputMode !== "number" && (
+                    <AccentBar onPick={insertChar} />
+                  )}
                   <button type="submit" disabled={!answer.trim() || submitting} className="pill pill-peach w-full py-3">
                     {submitting ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
                     Prüfen

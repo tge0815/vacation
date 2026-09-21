@@ -1,21 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { importVocab, listSubjects, listUsers, getUserInFamily } from "@/lib/db/repo";
+import { importVocab, listUsers, getUserInFamily } from "@/lib/db/repo";
 import { requireParent } from "@/lib/auth/server";
 import {
   extractVocabFromImage,
   ALLOWED_IMAGE_TYPES,
   type ImageMediaType,
 } from "@/lib/ai/vocabPhoto";
+import { langConfig, langSubject, parseLang } from "@/lib/vocabLang";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-// POST /api/vocab/photo { userId?, allUsers?, image }  (image = data-URL vom Foto)
+// POST /api/vocab/photo { userId?, allUsers?, image, lang? }  (image = data-URL vom Foto)
 // Die KI liest die Vokabeln aus dem Foto und importiert sie ins Vokabelheft —
 // entweder für EIN Kind (userId) oder für ALLE Kinder der Familie (allUsers).
 export async function POST(req: NextRequest) {
-  const body = (await req.json()) as { userId?: number; allUsers?: boolean; image?: string };
+  const body = (await req.json()) as {
+    userId?: number;
+    allUsers?: boolean;
+    image?: string;
+    lang?: string;
+  };
 
   // Vokabel-Import ist Eltern-Sache. Zielkinder serverseitig ableiten.
   const familyId = await requireParent(req);
@@ -58,25 +64,36 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const vok = listSubjects(true).find((s) => s.key === "vokabeln");
-  if (!vok) {
-    return NextResponse.json({ error: "Lernbereich Vokabeln nicht gefunden" }, { status: 404 });
+  const lang = parseLang(body.lang);
+  const subject = langSubject(lang);
+  if (!subject) {
+    return NextResponse.json(
+      { error: `Lernbereich für ${langConfig(lang).label} nicht gefunden` },
+      { status: 404 },
+    );
   }
 
   try {
     // Foto nur EINMAL von der KI lesen, dann in alle Zielkinder übernehmen.
-    const pairs = await extractVocabFromImage({ base64, mediaType });
+    const pairs = await extractVocabFromImage({ base64, mediaType, lang });
     if (pairs.length === 0) {
-      return NextResponse.json({ added: 0, skipped: 0, total: 0, users: targetUserIds.length });
+      return NextResponse.json({
+        lang,
+        added: 0,
+        skipped: 0,
+        total: 0,
+        users: targetUserIds.length,
+      });
     }
     let added = 0;
     let skipped = 0;
     for (const uid of targetUserIds) {
-      const r = importVocab(uid, vok.id, pairs);
+      const r = importVocab(uid, subject.id, pairs);
       added += r.added;
       skipped += r.skipped;
     }
     return NextResponse.json({
+      lang,
       added,
       skipped,
       total: pairs.length,

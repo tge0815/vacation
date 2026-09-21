@@ -23,8 +23,20 @@ function norm(s: string, caseSensitive = false): string {
   const t = s
     .trim()
     .replace(/\s+/g, " ")
+    // Typografische Apostrophe/Akzentzeichen auf den geraden Apostroph
+    // vereinheitlichen: Tablet-Tastaturen liefern oft ’ statt ', und
+    // "j'aime" darf nicht daran scheitern.
+    .replace(/[\u2018\u2019\u02bc\u00b4`]/g, "'")
     .replace(/[.!?,;:]+$/, "");
   return caseSensitive ? t : t.toLowerCase();
+}
+
+// Akzente entfernen: "élève" → "eleve". Für Französisch werten wir eine
+// Antwort ohne Akzente als richtig — auf Tastatur und Tablet sind sie mühsam
+// und ein fehlender Accent aigu ist kein Vokabelfehler. Die richtige
+// Schreibweise wird aber als Hinweis mitgegeben, damit sie sich einprägt.
+function stripAccents(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function parseNum(s: string): number | null {
@@ -45,10 +57,12 @@ function wrong(exercise: Exercise): Grade {
 }
 
 // caseSensitive=true (Deutsch): Groß-/Kleinschreibung zählt.
+// accentTolerant=true (Französisch): fehlende Akzente sind kein Fehler.
 export function tryLocalGrade(
   exercise: Exercise,
   answer: string,
   caseSensitive = false,
+  accentTolerant = false,
 ): Grade | null {
   if (exercise.inputMode === "reading") return null; // Vorlesen → KI
 
@@ -68,10 +82,26 @@ export function tryLocalGrade(
   }
 
   // choice / text / fraction: gegen solution + acceptable (normalisiert) prüfen.
-  const accepted = new Set(
-    [exercise.solution, ...(exercise.acceptable ?? [])].map((s) => norm(s, caseSensitive)),
-  );
-  return accepted.has(norm(a, caseSensitive))
-    ? { isCorrect: true, score: 100, feedback: praise(a) }
-    : wrong(exercise);
+  const solutions = [exercise.solution, ...(exercise.acceptable ?? [])];
+  const accepted = new Set(solutions.map((s) => norm(s, caseSensitive)));
+  if (accepted.has(norm(a, caseSensitive))) {
+    return { isCorrect: true, score: 100, feedback: praise(a) };
+  }
+
+  // Französisch: gleiche Antwort, nur ohne Akzente → richtig, mit Hinweis auf
+  // die korrekte Schreibweise.
+  if (accentTolerant) {
+    const key = stripAccents(norm(a, caseSensitive));
+    const hit = solutions.find((s) => stripAccents(norm(s, caseSensitive)) === key);
+    if (hit) {
+      return {
+        isCorrect: true,
+        score: 100,
+        feedback: praise(a),
+        correction: `Richtig! Mit Akzent schreibt man: ${hit}`,
+      };
+    }
+  }
+
+  return wrong(exercise);
 }

@@ -15,10 +15,20 @@ type Vocab = {
   box: number;
 };
 
+type Lang = "en" | "fr";
+
+// Anzeige-Texte pro Sprache. Die Zuordnung Sprache → Lernbereich passiert
+// serverseitig (src/lib/vocabLang.ts) — hier geht es nur um die Beschriftung.
+const LANGS: Record<Lang, { label: string; flag: string; pair: string; area: string }> = {
+  en: { label: "Englisch", flag: "🇬🇧", pair: "Deutsch↔Englisch", area: "Vokabeln" },
+  fr: { label: "Französisch", flag: "🇫🇷", pair: "Deutsch↔Französisch", area: "Französisch" },
+};
+
 export function ParentVocab() {
   const [users, setUsers] = useState<PublicUser[]>([]);
   const [userId, setUserId] = useState<number | null>(null);
-  const [data, setData] = useState<{ forUser: number; vocab: Vocab[] } | null>(null);
+  const [lang, setLang] = useState<Lang>("en");
+  const [data, setData] = useState<{ forUser: number; forLang: Lang; vocab: Vocab[] } | null>(null);
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -26,11 +36,15 @@ export function ParentVocab() {
   const [applyAll, setApplyAll] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  function loadVocab(uid: number) {
-    fetch(`/api/vocab?userId=${uid}`)
+  const L = LANGS[lang];
+
+  function loadVocab(uid: number, l: Lang) {
+    fetch(`/api/vocab?userId=${uid}&lang=${l}`)
       .then((r) => r.json())
-      .then((d: { vocab: Vocab[] }) => setData({ forUser: uid, vocab: d.vocab }))
-      .catch(() => setData({ forUser: uid, vocab: [] }));
+      .then((d: { vocab?: Vocab[] }) =>
+        setData({ forUser: uid, forLang: l, vocab: d.vocab ?? [] }),
+      )
+      .catch(() => setData({ forUser: uid, forLang: l, vocab: [] }));
   }
 
   function importSchoolVocab() {
@@ -40,7 +54,7 @@ export function ParentVocab() {
     fetch("/api/vocab", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, allUsers: applyAll }),
+      body: JSON.stringify({ userId, allUsers: applyAll, lang }),
     })
       .then((r) => r.json())
       .then((d: { added?: number; skipped?: number; total?: number; users?: number; error?: string }) => {
@@ -49,7 +63,7 @@ export function ParentVocab() {
           const who = applyAll ? ` (für ${d.users ?? users.length} Kinder)` : "";
           setImportMsg(`${d.added} neu, ${d.skipped} schon vorhanden${who} — ${d.total} Wörter.`);
         }
-        if (userId) loadVocab(userId);
+        if (userId) loadVocab(userId, lang);
       })
       .catch(() => setImportMsg("Import fehlgeschlagen."))
       .finally(() => setImporting(false));
@@ -67,7 +81,7 @@ export function ParentVocab() {
       fetch("/api/vocab/photo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, allUsers: applyAll, image }),
+        body: JSON.stringify({ userId, allUsers: applyAll, image, lang }),
       })
         .then((r) => r.json())
         .then((d: { added?: number; skipped?: number; total?: number; users?: number; error?: string }) => {
@@ -78,7 +92,7 @@ export function ParentVocab() {
             const who = applyAll ? ` (für ${d.users ?? users.length} Kinder)` : "";
             setPhotoMsg(`${d.added} neu, ${d.skipped} schon vorhanden${who} — ${d.total} im Foto erkannt.`);
           }
-          if (userId) loadVocab(userId);
+          if (userId) loadVocab(userId, lang);
         })
         .catch(() => setPhotoMsg("Foto-Import fehlgeschlagen."))
         .finally(() => setPhotoBusy(false));
@@ -103,10 +117,10 @@ export function ParentVocab() {
 
   useEffect(() => {
     if (!userId) return;
-    loadVocab(userId);
-  }, [userId]);
+    loadVocab(userId, lang);
+  }, [userId, lang]);
 
-  const vocab = data && data.forUser === userId ? data.vocab : null;
+  const vocab = data && data.forUser === userId && data.forLang === lang ? data.vocab : null;
 
   if (users.length === 0)
     return <p className="text-neutral-500 text-center py-8">Erst ein Kind anlegen.</p>;
@@ -131,6 +145,28 @@ export function ParentVocab() {
         ))}
       </div>
 
+      {/* Sprache: jedes Vokabelheft liegt in einem eigenen Lernbereich, darum
+          vermischen sich englische und französische Vokabeln nie. */}
+      <div className="flex flex-wrap gap-2">
+        {(Object.keys(LANGS) as Lang[]).map((l) => (
+          <button
+            key={l}
+            onClick={() => {
+              setImportMsg(null);
+              setPhotoMsg(null);
+              setLang(l);
+            }}
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ${
+              lang === l
+                ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                : "bg-neutral-100 dark:bg-neutral-800"
+            }`}
+          >
+            <span>{LANGS[l].flag}</span> {LANGS[l].label}
+          </button>
+        ))}
+      </div>
+
       {users.length > 1 && (
         <label className="flex items-center gap-2 text-sm rounded-xl bg-violet-500/10 px-3 py-2 w-fit cursor-pointer">
           <input
@@ -146,9 +182,17 @@ export function ParentVocab() {
       )}
 
       <p className="text-xs text-neutral-500">
-        Vokabeln des Kindes (eigener Lernbereich „Vokabeln“). Falsche kommen automatisch wieder dran,
-        bis sie sitzen — nach mehrmals richtig wird der Status zu „gelernt“. Neue Wörter einfach als
-        Foto vom Vokabelheft einlesen; abgefragt wird in beide Richtungen (Deutsch↔Englisch).
+        {L.label}-Vokabeln des Kindes (Lernbereich „{L.area}“). Falsche kommen automatisch wieder
+        dran, bis sie sitzen — nach mehrmals richtig wird der Status zu „gelernt“. Neue Wörter
+        einfach als Foto vom Vokabelheft oder aus dem Buch einlesen; abgefragt wird in beide
+        Richtungen ({L.pair}).
+        {lang === "fr" && (
+          <>
+            {" "}
+            Damit Französisch beim Kind als Tagesziel auftaucht, im Reiter <strong>Ziele</strong>{" "}
+            ein Ziel für „Französisch“ setzen.
+          </>
+        )}
       </p>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -158,7 +202,7 @@ export function ParentVocab() {
           className="inline-flex items-center gap-2 rounded-xl bg-violet-500 text-white text-sm font-semibold px-4 py-2 disabled:opacity-40 hover:opacity-90"
         >
           {photoBusy ? <Loader2 className="animate-spin" size={16} /> : <Camera size={16} />}
-          Vokabeln aus Foto einlesen
+          {L.label}-Vokabeln aus Foto einlesen
         </button>
         <input
           ref={fileRef}
@@ -178,7 +222,7 @@ export function ParentVocab() {
           className="inline-flex items-center gap-2 rounded-xl bg-sky-500 text-white text-sm font-semibold px-4 py-2 disabled:opacity-40 hover:opacity-90"
         >
           {importing ? <Loader2 className="animate-spin" size={16} /> : <BookPlus size={16} />}
-          Beispiel-Vokabeln importieren
+          {lang === "fr" ? "Buch-Vokabeln importieren" : "Beispiel-Vokabeln importieren"}
         </button>
         {importMsg && <span className="text-xs text-neutral-500">{importMsg}</span>}
       </div>
@@ -189,8 +233,8 @@ export function ParentVocab() {
         </div>
       ) : vocab.length === 0 ? (
         <p className="text-neutral-500 text-center py-8">
-          Noch keine Vokabeln. Lies welche per Foto ein oder importiere die Beispiel-Vokabeln — dann
-          erscheinen sie hier.
+          Noch keine {L.label}-Vokabeln. Lies welche per Foto ein oder importiere die
+          Buch-Vokabeln — dann erscheinen sie hier.
         </p>
       ) : (
         <div className="rounded-2xl bg-white dark:bg-neutral-900 border border-black/[0.06] dark:border-white/[0.06] divide-y divide-black/[0.05] dark:divide-white/[0.05]">

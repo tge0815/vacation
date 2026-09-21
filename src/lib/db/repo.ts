@@ -1070,8 +1070,8 @@ export function recordVocab(
   const norm = pairNorm(prompt, answer);
   const now = Date.now();
   const row = db
-    .prepare("SELECT id, box FROM vocab WHERE user_id = ? AND norm = ?")
-    .get(userId, norm) as { id: number; box: number } | undefined;
+    .prepare("SELECT id, box FROM vocab WHERE user_id = ? AND subject_id = ? AND norm = ?")
+    .get(userId, subjectId, norm) as { id: number; box: number } | undefined;
   if (!row) {
     db.prepare(
       `INSERT INTO vocab (user_id, subject_id, prompt, answer, norm, seen, correct, wrong, box, last_seen, created_at)
@@ -1096,10 +1096,18 @@ export function dueVocab(userId: number, subjectId: number, limit: number): Voca
     .all(userId, subjectId, limit) as VocabRow[];
 }
 
-export function listVocab(userId: number): VocabRow[] {
-  return getDb()
-    .prepare("SELECT * FROM vocab WHERE user_id = ? ORDER BY wrong DESC, last_seen DESC")
-    .all(userId) as VocabRow[];
+export function listVocab(userId: number, subjectId?: number): VocabRow[] {
+  const db = getDb();
+  if (subjectId === undefined) {
+    return db
+      .prepare("SELECT * FROM vocab WHERE user_id = ? ORDER BY wrong DESC, last_seen DESC")
+      .all(userId) as VocabRow[];
+  }
+  return db
+    .prepare(
+      "SELECT * FROM vocab WHERE user_id = ? AND subject_id = ? ORDER BY wrong DESC, last_seen DESC",
+    )
+    .all(userId, subjectId) as VocabRow[];
 }
 
 // Statische Vokabelliste ins Vokabelheft eines Kindes importieren (Upsert).
